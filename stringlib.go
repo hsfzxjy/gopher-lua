@@ -10,7 +10,7 @@ import (
 const emptyLString LString = LString("")
 
 func OpenString(L *LState) int {
-	var mod *LTable
+	var mod *LTable //lint:ignore S1021 Align with upstream
 	//_, ok := L.G.builtinMts[int(LTString)]
 	//if !ok {
 	mod = L.RegisterModule(StringLibName, strFuncs).MustLTable()
@@ -209,7 +209,7 @@ func strGsubDoReplace(str string, info []replaceInfo) string {
 		b2 := []byte("")
 		index2 := offset + replace.Indicies[1]
 		if index2 <= len(buf) {
-			b2 = append(b2, buf[index2:len(buf)]...)
+			b2 = append(b2, buf[index2:]...)
 		}
 		buf = append(b1, replace.String...)
 		buf = append(buf, b2...)
