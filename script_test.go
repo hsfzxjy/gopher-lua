@@ -86,6 +86,7 @@ func testScriptDir(t *testing.T, tests []string, directory string) {
 
 var numActiveUserDatas int32 = 0
 
+//lint:ignore U1000 this is for testing
 type finalizerStub struct{ x byte }
 
 func allocFinalizerUserData(L *LState) int {

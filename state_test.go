@@ -385,11 +385,11 @@ func TestCoroutineApi1(t *testing.T) {
 	errorIfNotEqual(t, 1, len(values))
 	errorIfNotEqual(t, LNumber(4), values[0].MustLNumber())
 
-	st, err, values = L.Resume(co, fn)
+	st, err, _ = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeError, st)
 	errorIfNil(t, err)
 	errorIfFalse(t, strings.Contains(err.Error(), "--failed--"), "error message must be '--failed--'")
-	st, err, values = L.Resume(co, fn)
+	st, err, _ = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeError, st)
 	errorIfNil(t, err)
 	errorIfFalse(t, strings.Contains(err.Error(), "can not resume a dead thread"), "can not resume a dead thread")
@@ -466,7 +466,7 @@ func TestContextWithCroutine(t *testing.T) {
 	errorIfNotEqual(t, LNumber(0), values[0])
 	// cancel the parent context
 	cancel()
-	_, err, values = L.Resume(co, fn)
+	_, err, _ = L.Resume(co, fn)
 	errorIfNil(t, err)
 	errorIfFalse(t, strings.Contains(err.Error(), "context canceled"), "coroutine execution must be canceled when the parent context is canceled")
 
