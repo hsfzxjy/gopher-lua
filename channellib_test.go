@@ -190,7 +190,7 @@ func TestChannelSelect3(t *testing.T) {
 	ch := make(chan LValue)
 	wg.Add(2)
 	go receiver(ch)
-	time.Sleep(1)
+	time.Sleep(1 * time.Microsecond)
 	go sender(ch)
 	wg.Wait()
 }
