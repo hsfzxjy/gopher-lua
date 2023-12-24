@@ -2,7 +2,6 @@ package lua
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -288,7 +287,7 @@ func fileCloseAux(L *LState, file *lFile) int {
 				if s, ok := e2.Sys().(syscall.WaitStatus); ok {
 					exitStatus = s.ExitStatus()
 				} else {
-					err = errors.New("Unimplemented for system where exec.ExitError.Sys() is not syscall.WaitStatus.")
+					panic("Unimplemented for system where exec.ExitError.Sys() is not syscall.WaitStatus.")
 				}
 			}
 		} else {
