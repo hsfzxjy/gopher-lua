@@ -18,7 +18,7 @@ func checkGoroutineSafe(L *LState, idx int) LValue {
 }
 
 func OpenChannel(L *LState) int {
-	var mod LValue
+	var mod LValue //lint:ignore S1021 Align with upstream
 	//_, ok := L.G.builtinMts[int(LTChannel)]
 	//	if !ok {
 	mod = L.RegisterModule(ChannelLibName, channelFuncs)
