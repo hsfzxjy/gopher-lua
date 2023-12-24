@@ -69,7 +69,7 @@ var osFuncs = map[string]LGFunction{
 }
 
 func osClock(L *LState) int {
-	L.Push(LNumber(float64(time.Now().Sub(startedAt)) / float64(time.Second)).AsLValue())
+	L.Push(LNumber(float64(time.Since(startedAt)) / float64(time.Second)).AsLValue())
 	return 1
 }
 
