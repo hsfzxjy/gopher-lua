@@ -67,6 +67,8 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 // n is the desired number of return values.
 // If n more than the available return values then the extra values are set to nil.
 // When this function returns the top of the registry will be set to regv+n.
+//
+//lint:ignore U1000 For inlining
 func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 	if b == 1 {
 		// +inline-call L.reg.FillNil  regv n
@@ -607,6 +609,7 @@ func init() {
 			}
 			if callable == nil {
 				L.RaiseError("attempt to call a non-function object")
+				return 0
 			}
 			// +inline-call L.closeUpvalues lbase
 			if callable.IsG {
@@ -634,9 +637,7 @@ func init() {
 				cf.Pc = 0
 				cf.Base = RA
 				cf.LocalBase = RA + 1
-				cf.ReturnBase = cf.ReturnBase
 				cf.NArgs = nargs
-				cf.NRet = cf.NRet
 				cf.TailCall++
 				lbase := cf.LocalBase
 				if meta {
@@ -880,7 +881,6 @@ func numberArith(L *LState, opcode int, lhs, rhs LNumber) LNumber {
 		return LNumber(math.Pow(flhs, frhs))
 	}
 	panic("should not reach here")
-	return LNumber(0)
 }
 
 func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
