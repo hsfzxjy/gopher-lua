@@ -7,8 +7,8 @@ import (
 	"runtime/pprof"
 
 	"github.com/chzyer/readline"
-	lua "github.com/yuin/gopher-lua"
-	"github.com/yuin/gopher-lua/parse"
+	lua "github.com/hsfzxjy/gopher-lua"
+	"github.com/hsfzxjy/gopher-lua/parse"
 )
 
 func main() {
