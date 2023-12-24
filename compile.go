@@ -317,7 +317,7 @@ func (vp *varNamePool) Names() []string {
 }
 
 func (vp *varNamePool) List() []varNamePoolValue {
-	result := make([]varNamePoolValue, len(vp.names), len(vp.names))
+	result := make([]varNamePoolValue, len(vp.names))
 	for i, name := range vp.names {
 		result[i].Index = i + vp.offset
 		result[i].Name = name
