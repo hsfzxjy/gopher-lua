@@ -375,6 +375,7 @@ func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize i
 	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, alloc, handler}
 }
 
+//lint:ignore U1000 For inlining
 func (rg *registry) checkSize(requiredSize int) { // +inline-start
 	if requiredSize > cap(rg.array) {
 		rg.resize(requiredSize)
@@ -606,6 +607,7 @@ func (ls *LState) printReg() {
 	println("-------------------------")
 }
 
+//lint:ignore U1000 For debugging
 func (ls *LState) printCallStack() {
 	println("-------------------------")
 	for i := 0; i < ls.stack.Sp(); i++ {
@@ -711,12 +713,12 @@ func (ls *LState) stackTrace(level int) string {
 		}
 	}
 	buf = append(buf, fmt.Sprintf("\t%v: %v", "[G]", "?"))
-	buf = buf[intMax(0, intMin(level, len(buf))):len(buf)]
+	buf = buf[intMax(0, intMin(level, len(buf))):]
 	if len(buf) > 20 {
 		newbuf := make([]string, 0, 20)
 		newbuf = append(newbuf, buf[0:7]...)
 		newbuf = append(newbuf, "\t...")
-		newbuf = append(newbuf, buf[len(buf)-7:len(buf)]...)
+		newbuf = append(newbuf, buf[len(buf)-7:]...)
 		buf = newbuf
 	}
 	return fmt.Sprintf("%s\n%s", header, strings.Join(buf, "\n"))
@@ -1334,7 +1336,6 @@ func (ls *LState) Get(idx int) LValue {
 			return LNil
 		}
 	}
-	return LNil
 }
 
 func (ls *LState) Push(value LValue) {
@@ -1942,6 +1943,7 @@ func (ls *LState) Status(th *LState) string {
 	return status
 }
 
+//lint:ignore ST1008 I like this
 func (ls *LState) Resume(th *LState, fn *LFunction, args ...LValue) (ResumeState, error, []LValue) {
 	isstarted := th.isStarted()
 	if !isstarted {
