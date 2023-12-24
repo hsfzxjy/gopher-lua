@@ -30,12 +30,12 @@ func tableSort(L *LState) int {
 }
 
 func tableGetN(L *LState) int {
-	L.Push(LNumber(L.CheckTable(1).Len()))
+	L.Push(LNumber(L.CheckTable(1).Len()).AsLValue())
 	return 1
 }
 
 func tableMaxN(L *LState) int {
-	L.Push(LNumber(L.CheckTable(1).MaxN()))
+	L.Push(LNumber(L.CheckTable(1).MaxN()).AsLValue())
 	return 1
 }
 
@@ -56,14 +56,14 @@ func tableConcat(L *LState) int {
 	j := L.OptInt(4, tbl.Len())
 	if L.GetTop() == 3 {
 		if i > tbl.Len() || i < 1 {
-			L.Push(emptyLString)
+			L.Push(emptyLString.AsLValue())
 			return 1
 		}
 	}
 	i = intMax(intMin(i, tbl.Len()), 1)
 	j = intMin(intMin(j, tbl.Len()), tbl.Len())
 	if i > j {
-		L.Push(emptyLString)
+		L.Push(emptyLString.AsLValue())
 		return 1
 	}
 	//TODO should flushing?
@@ -75,7 +75,7 @@ func tableConcat(L *LState) int {
 		}
 		L.Push(v)
 		if i != j {
-			L.Push(sep)
+			L.Push(sep.AsLValue())
 		}
 	}
 	L.Push(stringConcat(L, L.GetTop()-retbottom, L.reg.Top()-1))

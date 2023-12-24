@@ -10,9 +10,9 @@ func TestCheckInt(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, 10, L.CheckInt(2))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.CheckInt(3)
 		return 0
 	}, "number expected, got string")
@@ -22,9 +22,9 @@ func TestCheckInt64(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, int64(10), L.CheckInt64(2))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.CheckInt64(3)
 		return 0
 	}, "number expected, got string")
@@ -34,11 +34,11 @@ func TestCheckNumber(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, LNumber(10), L.CheckNumber(2))
-		L.Push(LString("11"))
+		L.Push(LString("11").AsLValue())
 		errorIfNotEqual(t, LNumber(11), L.CheckNumber(3))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.CheckNumber(4)
 		return 0
 	}, "number expected, got string")
@@ -48,11 +48,11 @@ func TestCheckString(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		errorIfNotEqual(t, "aaa", L.CheckString(2))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, "10", L.CheckString(3))
-		L.Push(L.NewTable())
+		L.Push(L.NewTable().AsLValue())
 		L.CheckString(4)
 		return 0
 	}, "string expected, got table")
@@ -62,9 +62,9 @@ func TestCheckBool(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 		errorIfNotEqual(t, true, L.CheckBool(2))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckBool(3)
 		return 0
 	}, "boolean expected, got number")
@@ -75,9 +75,9 @@ func TestCheckTable(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		tbl := L.NewTable()
-		L.Push(tbl)
+		L.Push(tbl.AsLValue())
 		errorIfNotEqual(t, tbl, L.CheckTable(2))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckTable(3)
 		return 0
 	}, "table expected, got number")
@@ -88,9 +88,9 @@ func TestCheckFunction(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		fn := L.NewFunction(func(l *LState) int { return 0 })
-		L.Push(fn)
+		L.Push(fn.AsLValue())
 		errorIfNotEqual(t, fn, L.CheckFunction(2))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckFunction(3)
 		return 0
 	}, "function expected, got number")
@@ -101,9 +101,9 @@ func TestCheckUserData(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		ud := L.NewUserData()
-		L.Push(ud)
+		L.Push(ud.AsLValue())
 		errorIfNotEqual(t, ud, L.CheckUserData(2))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckUserData(3)
 		return 0
 	}, "userdata expected, got number")
@@ -114,9 +114,9 @@ func TestCheckThread(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		th, _ := L.NewThread()
-		L.Push(th)
+		L.Push(th.AsLValue())
 		errorIfNotEqual(t, th, L.CheckThread(2))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckThread(3)
 		return 0
 	}, "thread expected, got number")
@@ -127,9 +127,9 @@ func TestCheckChannel(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		ch := make(chan LValue)
-		L.Push(LChannel(ch))
+		L.Push(LChannel(ch).AsLValue())
 		errorIfNotEqual(t, ch, L.CheckChannel(2))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.CheckChannel(3)
 		return 0
 	}, "channel expected, got string")
@@ -139,7 +139,7 @@ func TestCheckType(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckType(2, LTNumber)
 		L.CheckType(2, LTString)
 		return 0
@@ -150,7 +150,7 @@ func TestCheckTypes(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.CheckTypes(2, LTString, LTBool, LTNumber)
 		L.CheckTypes(2, LTString, LTBool)
 		return 0
@@ -166,9 +166,9 @@ func TestCheckOption(t *testing.T) {
 	L := NewState()
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
-		L.Push(LString("opt1"))
+		L.Push(LString("opt1").AsLValue())
 		errorIfNotEqual(t, 0, L.CheckOption(2, opts))
-		L.Push(LString("opt5"))
+		L.Push(LString("opt5").AsLValue())
 		L.CheckOption(3, opts)
 		return 0
 	}, "invalid option: opt5 \\(must be one of opt1,opt2,opt3\\)")
@@ -179,9 +179,9 @@ func TestOptInt(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		errorIfNotEqual(t, 99, L.OptInt(1, 99))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, 10, L.OptInt(2, 99))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.OptInt(3, 99)
 		return 0
 	}, "number expected, got string")
@@ -192,9 +192,9 @@ func TestOptInt64(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		errorIfNotEqual(t, int64(99), L.OptInt64(1, int64(99)))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, int64(10), L.OptInt64(2, int64(99)))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.OptInt64(3, int64(99))
 		return 0
 	}, "number expected, got string")
@@ -205,9 +205,9 @@ func TestOptNumber(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		errorIfNotEqual(t, LNumber(99), L.OptNumber(1, LNumber(99)))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		errorIfNotEqual(t, LNumber(10), L.OptNumber(2, LNumber(99)))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.OptNumber(3, LNumber(99))
 		return 0
 	}, "number expected, got string")
@@ -218,9 +218,9 @@ func TestOptString(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		errorIfNotEqual(t, "bbb", L.OptString(1, "bbb"))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		errorIfNotEqual(t, "aaa", L.OptString(2, "bbb"))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.OptString(3, "bbb")
 		return 0
 	}, "string expected, got number")
@@ -231,9 +231,9 @@ func TestOptBool(t *testing.T) {
 	defer L.Close()
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		errorIfNotEqual(t, true, L.OptBool(1, true))
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 		errorIfNotEqual(t, true, L.OptBool(2, false))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.OptBool(3, false)
 		return 0
 	}, "boolean expected, got number")
@@ -246,9 +246,9 @@ func TestOptTable(t *testing.T) {
 		deftbl := L.NewTable()
 		errorIfNotEqual(t, deftbl, L.OptTable(1, deftbl))
 		tbl := L.NewTable()
-		L.Push(tbl)
+		L.Push(tbl.AsLValue())
 		errorIfNotEqual(t, tbl, L.OptTable(2, deftbl))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.OptTable(3, deftbl)
 		return 0
 	}, "table expected, got number")
@@ -261,9 +261,9 @@ func TestOptFunction(t *testing.T) {
 		deffn := L.NewFunction(func(l *LState) int { return 0 })
 		errorIfNotEqual(t, deffn, L.OptFunction(1, deffn))
 		fn := L.NewFunction(func(l *LState) int { return 0 })
-		L.Push(fn)
+		L.Push(fn.AsLValue())
 		errorIfNotEqual(t, fn, L.OptFunction(2, deffn))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.OptFunction(3, deffn)
 		return 0
 	}, "function expected, got number")
@@ -276,9 +276,9 @@ func TestOptUserData(t *testing.T) {
 		defud := L.NewUserData()
 		errorIfNotEqual(t, defud, L.OptUserData(1, defud))
 		ud := L.NewUserData()
-		L.Push(ud)
+		L.Push(ud.AsLValue())
 		errorIfNotEqual(t, ud, L.OptUserData(2, defud))
-		L.Push(LNumber(10))
+		L.Push(LNumber(10).AsLValue())
 		L.OptUserData(3, defud)
 		return 0
 	}, "userdata expected, got number")
@@ -291,9 +291,9 @@ func TestOptChannel(t *testing.T) {
 		defch := make(chan LValue)
 		errorIfNotEqual(t, defch, L.OptChannel(1, defch))
 		ch := make(chan LValue)
-		L.Push(LChannel(ch))
+		L.Push(LChannel(ch).AsLValue())
 		errorIfNotEqual(t, ch, L.OptChannel(2, defch))
-		L.Push(LString("aaa"))
+		L.Push(LString("aaa").AsLValue())
 		L.OptChannel(3, defch)
 		return 0
 	}, "channel expected, got string")

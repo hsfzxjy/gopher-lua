@@ -6,10 +6,10 @@ import (
 )
 
 func OpenMath(L *LState) int {
-	mod := L.RegisterModule(MathLibName, mathFuncs).(*LTable)
-	mod.RawSetString("pi", LNumber(math.Pi))
-	mod.RawSetString("huge", LNumber(math.MaxFloat64))
-	L.Push(mod)
+	mod := L.RegisterModule(MathLibName, mathFuncs).MustLTable()
+	mod.RawSetString("pi", LNumber(math.Pi).AsLValue())
+	mod.RawSetString("huge", LNumber(math.MaxFloat64).AsLValue())
+	L.Push(mod.AsLValue())
 	return 1
 }
 
@@ -46,84 +46,84 @@ var mathFuncs = map[string]LGFunction{
 }
 
 func mathAbs(L *LState) int {
-	L.Push(LNumber(math.Abs(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Abs(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathAcos(L *LState) int {
-	L.Push(LNumber(math.Acos(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Acos(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathAsin(L *LState) int {
-	L.Push(LNumber(math.Asin(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Asin(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathAtan(L *LState) int {
-	L.Push(LNumber(math.Atan(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Atan(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathAtan2(L *LState) int {
-	L.Push(LNumber(math.Atan2(float64(L.CheckNumber(1)), float64(L.CheckNumber(2)))))
+	L.Push(LNumber(math.Atan2(float64(L.CheckNumber(1)), float64(L.CheckNumber(2)))).AsLValue())
 	return 1
 }
 
 func mathCeil(L *LState) int {
-	L.Push(LNumber(math.Ceil(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Ceil(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathCos(L *LState) int {
-	L.Push(LNumber(math.Cos(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Cos(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathCosh(L *LState) int {
-	L.Push(LNumber(math.Cosh(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Cosh(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathDeg(L *LState) int {
-	L.Push(LNumber(float64(L.CheckNumber(1)) * 180 / math.Pi))
+	L.Push(LNumber(float64(L.CheckNumber(1)) * 180 / math.Pi).AsLValue())
 	return 1
 }
 
 func mathExp(L *LState) int {
-	L.Push(LNumber(math.Exp(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Exp(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathFloor(L *LState) int {
-	L.Push(LNumber(math.Floor(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Floor(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathFmod(L *LState) int {
-	L.Push(LNumber(math.Mod(float64(L.CheckNumber(1)), float64(L.CheckNumber(2)))))
+	L.Push(LNumber(math.Mod(float64(L.CheckNumber(1)), float64(L.CheckNumber(2)))).AsLValue())
 	return 1
 }
 
 func mathFrexp(L *LState) int {
 	v1, v2 := math.Frexp(float64(L.CheckNumber(1)))
-	L.Push(LNumber(v1))
-	L.Push(LNumber(v2))
+	L.Push(LNumber(v1).AsLValue())
+	L.Push(LNumber(v2).AsLValue())
 	return 2
 }
 
 func mathLdexp(L *LState) int {
-	L.Push(LNumber(math.Ldexp(float64(L.CheckNumber(1)), L.CheckInt(2))))
+	L.Push(LNumber(math.Ldexp(float64(L.CheckNumber(1)), L.CheckInt(2))).AsLValue())
 	return 1
 }
 
 func mathLog(L *LState) int {
-	L.Push(LNumber(math.Log(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Log(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathLog10(L *LState) int {
-	L.Push(LNumber(math.Log10(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Log10(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
@@ -139,7 +139,7 @@ func mathMax(L *LState) int {
 			max = v
 		}
 	}
-	L.Push(max)
+	L.Push(max.AsLValue())
 	return 1
 }
 
@@ -155,45 +155,45 @@ func mathMin(L *LState) int {
 			min = v
 		}
 	}
-	L.Push(min)
+	L.Push(min.AsLValue())
 	return 1
 }
 
 func mathMod(L *LState) int {
 	lhs := L.CheckNumber(1)
 	rhs := L.CheckNumber(2)
-	L.Push(luaModulo(lhs, rhs))
+	L.Push(luaModulo(lhs, rhs).AsLValue())
 	return 1
 }
 
 func mathModf(L *LState) int {
 	v1, v2 := math.Modf(float64(L.CheckNumber(1)))
-	L.Push(LNumber(v1))
-	L.Push(LNumber(v2))
+	L.Push(LNumber(v1).AsLValue())
+	L.Push(LNumber(v2).AsLValue())
 	return 2
 }
 
 func mathPow(L *LState) int {
-	L.Push(LNumber(math.Pow(float64(L.CheckNumber(1)), float64(L.CheckNumber(2)))))
+	L.Push(LNumber(math.Pow(float64(L.CheckNumber(1)), float64(L.CheckNumber(2)))).AsLValue())
 	return 1
 }
 
 func mathRad(L *LState) int {
-	L.Push(LNumber(float64(L.CheckNumber(1)) * math.Pi / 180))
+	L.Push(LNumber(float64(L.CheckNumber(1)) * math.Pi / 180).AsLValue())
 	return 1
 }
 
 func mathRandom(L *LState) int {
 	switch L.GetTop() {
 	case 0:
-		L.Push(LNumber(rand.Float64()))
+		L.Push(LNumber(rand.Float64()).AsLValue())
 	case 1:
 		n := L.CheckInt(1)
-		L.Push(LNumber(rand.Intn(n) + 1))
+		L.Push(LNumber(rand.Intn(n) + 1).AsLValue())
 	default:
 		min := L.CheckInt(1)
 		max := L.CheckInt(2) + 1
-		L.Push(LNumber(rand.Intn(max-min) + min))
+		L.Push(LNumber(rand.Intn(max-min) + min).AsLValue())
 	}
 	return 1
 }
@@ -204,27 +204,27 @@ func mathRandomseed(L *LState) int {
 }
 
 func mathSin(L *LState) int {
-	L.Push(LNumber(math.Sin(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Sin(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathSinh(L *LState) int {
-	L.Push(LNumber(math.Sinh(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Sinh(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathSqrt(L *LState) int {
-	L.Push(LNumber(math.Sqrt(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Sqrt(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathTan(L *LState) int {
-	L.Push(LNumber(math.Tan(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Tan(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 
 func mathTanh(L *LState) int {
-	L.Push(LNumber(math.Tanh(float64(L.CheckNumber(1)))))
+	L.Push(LNumber(math.Tanh(float64(L.CheckNumber(1)))).AsLValue())
 	return 1
 }
 

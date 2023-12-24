@@ -37,12 +37,12 @@ func debugGetInfo(L *LState) int {
 	var fn LValue
 	var err error
 	var ok bool
-	switch lv := arg1.(type) {
-	case *LFunction:
+	switch lv := arg1; arg1.Type() {
+	case LTFunction:
 		dbg = &Debug{}
 		fn, err = L.GetInfo(">"+what, dbg, lv)
-	case LNumber:
-		dbg, ok = L.GetStack(int(lv))
+	case LTNumber:
+		dbg, ok = L.GetStack(int(lv.MustLNumber()))
 		if !ok {
 			L.Push(LNil)
 			return 1
@@ -56,18 +56,18 @@ func debugGetInfo(L *LState) int {
 	}
 	tbl := L.NewTable()
 	if len(dbg.Name) > 0 {
-		tbl.RawSetString("name", LString(dbg.Name))
+		tbl.RawSetString("name", LString(dbg.Name).AsLValue())
 	} else {
 		tbl.RawSetString("name", LNil)
 	}
-	tbl.RawSetString("what", LString(dbg.What))
-	tbl.RawSetString("source", LString(dbg.Source))
-	tbl.RawSetString("currentline", LNumber(dbg.CurrentLine))
-	tbl.RawSetString("nups", LNumber(dbg.NUpvalues))
-	tbl.RawSetString("linedefined", LNumber(dbg.LineDefined))
-	tbl.RawSetString("lastlinedefined", LNumber(dbg.LastLineDefined))
+	tbl.RawSetString("what", LString(dbg.What).AsLValue())
+	tbl.RawSetString("source", LString(dbg.Source).AsLValue())
+	tbl.RawSetString("currentline", LNumber(dbg.CurrentLine).AsLValue())
+	tbl.RawSetString("nups", LNumber(dbg.NUpvalues).AsLValue())
+	tbl.RawSetString("linedefined", LNumber(dbg.LineDefined).AsLValue())
+	tbl.RawSetString("lastlinedefined", LNumber(dbg.LastLineDefined).AsLValue())
 	tbl.RawSetString("func", fn)
-	L.Push(tbl)
+	L.Push(tbl.AsLValue())
 	return 1
 }
 
@@ -80,7 +80,7 @@ func debugGetLocal(L *LState) int {
 	}
 	name, value := L.GetLocal(dbg, idx)
 	if len(name) > 0 {
-		L.Push(LString(name))
+		L.Push(LString(name).AsLValue())
 		L.Push(value)
 		return 2
 	}
@@ -98,7 +98,7 @@ func debugGetUpvalue(L *LState) int {
 	idx := L.CheckInt(2)
 	name, value := L.GetUpvalue(fn, idx)
 	if len(name) > 0 {
-		L.Push(LString(name))
+		L.Push(LString(name).AsLValue())
 		L.Push(value)
 		return 2
 	}
@@ -121,7 +121,7 @@ func debugSetLocal(L *LState) int {
 	}
 	name := L.SetLocal(dbg, idx, value)
 	if len(name) > 0 {
-		L.Push(LString(name))
+		L.Push(LString(name).AsLValue())
 	} else {
 		L.Push(LNil)
 	}
@@ -143,7 +143,7 @@ func debugSetUpvalue(L *LState) int {
 	value := L.CheckAny(3)
 	name := L.SetUpvalue(fn, idx, value)
 	if len(name) > 0 {
-		L.Push(LString(name))
+		L.Push(LString(name).AsLValue())
 	} else {
 		L.Push(LNil)
 	}
@@ -155,10 +155,10 @@ func debugTraceback(L *LState) int {
 	level := L.OptInt(2, 1)
 	ls := L
 	if L.GetTop() > 0 {
-		if s, ok := L.Get(1).(LString); ok {
+		if s, ok := L.Get(1).AsLString(); ok {
 			msg = string(s)
 		}
-		if l, ok := L.Get(1).(*LState); ok {
+		if l, ok := L.Get(1).AsLState(); ok {
 			ls = l
 			msg = ""
 		}
@@ -168,6 +168,6 @@ func debugTraceback(L *LState) int {
 	if len(msg) > 0 {
 		traceback = fmt.Sprintf("%s\n%s", msg, traceback)
 	}
-	L.Push(LString(traceback))
+	L.Push(LString(traceback).AsLValue())
 	return 1
 }

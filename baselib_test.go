@@ -56,9 +56,9 @@ func TestOsDateFormatUTCWithTwoParam(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			args := make([]LValue, 0)
-			args = append(args, LString(c.Format))
+			args = append(args, LString(c.Format).AsLValue())
 			if c.Timestamp != nil {
-				args = append(args, LNumber(*c.Timestamp))
+				args = append(args, LNumber(*c.Timestamp).AsLValue())
 			}
 			err := ls.CallByParam(P{
 				Fn:      fn,
@@ -95,7 +95,7 @@ func TestOsDateFormatLocalWithTwoParam(t *testing.T) {
 		Fn:      fn,
 		NRet:    1,
 		Protect: true,
-	}, LString("*t"), LNumber(nowLocal.Unix()))
+	}, LString("*t").AsLValue(), LNumber(nowLocal.Unix()).AsLValue())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -96,7 +96,7 @@ func allocFinalizerUserData(L *LState) int {
 	runtime.SetFinalizer(&a, func(aa *finalizerStub) {
 		atomic.AddInt32(&numActiveUserDatas, -1)
 	})
-	L.Push(ud)
+	L.Push(ud.AsLValue())
 	return 1
 }
 
@@ -106,7 +106,7 @@ func sleep(L *LState) int {
 }
 
 func countFinalizers(L *LState) int {
-	L.Push(LNumber(numActiveUserDatas))
+	L.Push(LNumber(numActiveUserDatas).AsLValue())
 	return 1
 }
 
@@ -130,9 +130,9 @@ func TestLocalVarFree(t *testing.T) {
 		error("user datas not finalized after 100 gcs")
 `
 	L := NewState()
-	L.SetGlobal("allocFinalizer", L.NewFunction(allocFinalizerUserData))
-	L.SetGlobal("sleep", L.NewFunction(sleep))
-	L.SetGlobal("countFinalizers", L.NewFunction(countFinalizers))
+	L.SetGlobal("allocFinalizer", L.NewFunction(allocFinalizerUserData).AsLValue())
+	L.SetGlobal("sleep", L.NewFunction(sleep).AsLValue())
+	L.SetGlobal("countFinalizers", L.NewFunction(countFinalizers).AsLValue())
 	defer L.Close()
 	if err := L.DoString(s); err != nil {
 		t.Error(err)

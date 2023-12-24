@@ -167,11 +167,11 @@ func popenArgs(arg string) (string, []string) {
 }
 
 func isGoroutineSafe(lv LValue) bool {
-	switch v := lv.(type) {
-	case *LFunction, *LUserData, *LState:
+	switch v := lv; v.Type() {
+	case LTFunction, LTUserData, LTThread:
 		return false
-	case *LTable:
-		return v.Metatable == LNil
+	case LTTable:
+		return v.MustLTable().Metatable == LNil
 	default:
 		return true
 	}

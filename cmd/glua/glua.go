@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/chzyer/readline"
-	"github.com/yuin/gopher-lua"
-	"github.com/yuin/gopher-lua/parse"
 	"os"
 	"runtime/pprof"
+
+	"github.com/chzyer/readline"
+	lua "github.com/yuin/gopher-lua"
+	"github.com/yuin/gopher-lua/parse"
 )
 
 func main() {
@@ -74,9 +75,9 @@ Available options are:
 		script := flag.Arg(0)
 		argtb := L.NewTable()
 		for i := 1; i < nargs; i++ {
-			L.RawSet(argtb, lua.LNumber(i), lua.LString(flag.Arg(i)))
+			L.RawSet(argtb, lua.LNumber(i).AsLValue(), lua.LString(flag.Arg(i)).AsLValue())
 		}
-		L.SetGlobal("arg", argtb)
+		L.SetGlobal("arg", argtb.AsLValue())
 		if opt_dt || opt_dc {
 			file, err := os.Open(script)
 			if err != nil {

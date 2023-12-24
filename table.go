@@ -19,7 +19,7 @@ func (lv lValueArraySorter) Swap(i, j int) {
 
 func (lv lValueArraySorter) Less(i, j int) bool {
 	if lv.Fn != nil {
-		lv.L.Push(lv.Fn)
+		lv.L.Push(lv.Fn.AsLValue())
 		lv.L.Push(lv.Values[i])
 		lv.L.Push(lv.Values[j])
 		lv.L.Call(2, 1)
@@ -93,7 +93,7 @@ func (tb *LTable) Insert(i int, value LValue) {
 		return
 	}
 	if i <= 0 {
-		tb.RawSet(LNumber(i), value)
+		tb.RawSet(LNumber(i).AsLValue(), value)
 		return
 	}
 	i -= 1
@@ -135,7 +135,7 @@ func (tb *LTable) Remove(pos int) LValue {
 	default:
 		oldval = tb.array[i]
 		copy(tb.array[i:], tb.array[i+1:])
-		tb.array[larray-1] = nil
+		tb.array[larray-1] = LValue{}
 		tb.array = tb.array[:larray-1]
 	}
 	return oldval
@@ -145,8 +145,9 @@ func (tb *LTable) Remove(pos int) LValue {
 // It is recommended to use `RawSetString` or `RawSetInt` for performance
 // if you already know the given LValue is a string or number.
 func (tb *LTable) RawSet(key LValue, value LValue) {
-	switch v := key.(type) {
-	case LNumber:
+	switch v := key; v.Type() {
+	case LTNumber:
+		v := v.MustLNumber()
 		if isArrayKey(v) {
 			if tb.array == nil {
 				tb.array = make([]LValue, 0, defaultArrayCap)
@@ -166,7 +167,8 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 			}
 			return
 		}
-	case LString:
+	case LTString:
+		v := v.MustLString()
 		tb.RawSetString(string(v), value)
 		return
 	}
@@ -177,7 +179,7 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 // RawSetInt sets a given LValue at a position `key` without the __newindex metamethod.
 func (tb *LTable) RawSetInt(key int, value LValue) {
 	if key < 1 || key >= MaxArrayIndex {
-		tb.RawSetH(LNumber(key), value)
+		tb.RawSetH(LNumber(key).AsLValue(), value)
 		return
 	}
 	if tb.array == nil {
@@ -214,16 +216,16 @@ func (tb *LTable) RawSetString(key string, value LValue) {
 	} else {
 		tb.strdict[key] = value
 		lkey := LString(key)
-		if _, ok := tb.k2i[lkey]; !ok {
-			tb.k2i[lkey] = len(tb.keys)
-			tb.keys = append(tb.keys, lkey)
+		if _, ok := tb.k2i[lkey.AsLValue()]; !ok {
+			tb.k2i[lkey.AsLValue()] = len(tb.keys)
+			tb.keys = append(tb.keys, lkey.AsLValue())
 		}
 	}
 }
 
 // RawSetH sets a given LValue to a given index without the __newindex metamethod.
 func (tb *LTable) RawSetH(key LValue, value LValue) {
-	if s, ok := key.(LString); ok {
+	if s, ok := key.AsLString(); ok {
 		tb.RawSetString(string(s), value)
 		return
 	}
@@ -249,8 +251,9 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 
 // RawGet returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGet(key LValue) LValue {
-	switch v := key.(type) {
-	case LNumber:
+	switch v := key; v.Type() {
+	case LTNumber:
+		v := v.MustLNumber()
 		if isArrayKey(v) {
 			if tb.array == nil {
 				return LNil
@@ -261,7 +264,8 @@ func (tb *LTable) RawGet(key LValue) LValue {
 			}
 			return tb.array[index]
 		}
-	case LString:
+	case LTString:
+		v := v.MustLString()
 		if tb.strdict == nil {
 			return LNil
 		}
@@ -293,7 +297,7 @@ func (tb *LTable) RawGetInt(key int) LValue {
 
 // RawGet returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetH(key LValue) LValue {
-	if s, sok := key.(LString); sok {
+	if s, sok := key.AsLString(); sok {
 		if tb.strdict == nil {
 			return LNil
 		}
@@ -327,14 +331,14 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	if tb.array != nil {
 		for i, v := range tb.array {
 			if v != LNil {
-				cb(LNumber(i+1), v)
+				cb(LNumber(i+1).AsLValue(), v)
 			}
 		}
 	}
 	if tb.strdict != nil {
 		for k, v := range tb.strdict {
 			if v != LNil {
-				cb(LString(k), v)
+				cb(LString(k).AsLValue(), v)
 			}
 		}
 	}
@@ -351,17 +355,17 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	init := false
 	if key == LNil {
-		key = LNumber(0)
+		key = LNumber(0).AsLValue()
 		init = true
 	}
 
-	if init || key != LNumber(0) {
-		if kv, ok := key.(LNumber); ok && isInteger(kv) && int(kv) >= 0 && kv < LNumber(MaxArrayIndex) {
+	if init || key != LNumber(0).AsLValue() {
+		if kv, ok := key.AsLNumber(); ok && isInteger(kv) && int(kv) >= 0 && kv < LNumber(MaxArrayIndex) {
 			index := int(kv)
 			if tb.array != nil {
 				for ; index < len(tb.array); index++ {
 					if v := tb.array[index]; v != LNil {
-						return LNumber(index + 1), v
+						return LNumber(index + 1).AsLValue(), v
 					}
 				}
 			}

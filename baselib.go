@@ -12,13 +12,13 @@ import (
 /* basic functions {{{ */
 
 func OpenBase(L *LState) int {
-	global := L.Get(GlobalsIndex).(*LTable)
-	L.SetGlobal("_G", global)
-	L.SetGlobal("_VERSION", LString(LuaVersion))
-	L.SetGlobal("_GOPHER_LUA_VERSION", LString(PackageName+" "+PackageVersion))
+	global := L.Get(GlobalsIndex).MustLTable()
+	L.SetGlobal("_G", global.AsLValue())
+	L.SetGlobal("_VERSION", LString(LuaVersion).AsLValue())
+	L.SetGlobal("_GOPHER_LUA_VERSION", LString(PackageName+" "+PackageVersion).AsLValue())
 	basemod := L.RegisterModule("_G", baseFuncs)
-	global.RawSetString("ipairs", L.NewClosure(baseIpairs, L.NewFunction(ipairsaux)))
-	global.RawSetString("pairs", L.NewClosure(basePairs, L.NewFunction(pairsaux)))
+	global.RawSetString("ipairs", L.NewClosure(baseIpairs, L.NewFunction(ipairsaux).AsLValue()).AsLValue())
+	global.RawSetString("pairs", L.NewClosure(basePairs, L.NewFunction(pairsaux).AsLValue()).AsLValue())
 	L.Push(basemod)
 	return 1
 }
@@ -73,10 +73,10 @@ func baseDoFile(L *LState) int {
 	top := L.GetTop()
 	fn, err := L.LoadFile(src)
 	if err != nil {
-		L.Push(LString(err.Error()))
+		L.Push(LString(err.Error()).AsLValue())
 		L.Panic(L)
 	}
-	L.Push(fn)
+	L.Push(fn.AsLValue())
 	L.Call(0, MultRet)
 	return L.GetTop() - top
 }
@@ -91,39 +91,39 @@ func baseError(L *LState) int {
 func baseGetFEnv(L *LState) int {
 	var value LValue
 	if L.GetTop() == 0 {
-		value = LNumber(1)
+		value = LNumber(1).AsLValue()
 	} else {
 		value = L.Get(1)
 	}
 
-	if fn, ok := value.(*LFunction); ok {
+	if fn, ok := value.AsLFunction(); ok {
 		if !fn.IsG {
-			L.Push(fn.Env)
+			L.Push(fn.Env.AsLValue())
 		} else {
-			L.Push(L.G.Global)
+			L.Push(L.G.Global.AsLValue())
 		}
 		return 1
 	}
 
-	if number, ok := value.(LNumber); ok {
+	if number, ok := value.AsLNumber(); ok {
 		level := int(float64(number))
 		if level <= 0 {
-			L.Push(L.Env)
+			L.Push(L.Env.AsLValue())
 		} else {
 			cf := L.currentFrame
 			for i := 0; i < level && cf != nil; i++ {
 				cf = cf.Parent
 			}
 			if cf == nil || cf.Fn.IsG {
-				L.Push(L.G.Global)
+				L.Push(L.G.Global.AsLValue())
 			} else {
-				L.Push(cf.Fn.Env)
+				L.Push(cf.Fn.Env.AsLValue())
 			}
 		}
 		return 1
 	}
 
-	L.Push(L.G.Global)
+	L.Push(L.G.Global.AsLValue())
 	return 1
 }
 
@@ -141,8 +141,8 @@ func ipairsaux(L *LState) int {
 		return 0
 	} else {
 		L.Pop(1)
-		L.Push(LNumber(i))
-		L.Push(LNumber(i))
+		L.Push(LNumber(i).AsLValue())
+		L.Push(LNumber(i).AsLValue())
 		L.Push(v)
 		return 2
 	}
@@ -151,18 +151,18 @@ func ipairsaux(L *LState) int {
 func baseIpairs(L *LState) int {
 	tb := L.CheckTable(1)
 	L.Push(L.Get(UpvalueIndex(1)))
-	L.Push(tb)
-	L.Push(LNumber(0))
+	L.Push(tb.AsLValue())
+	L.Push(LNumber(0).AsLValue())
 	return 3
 }
 
 func loadaux(L *LState, reader io.Reader, chunkname string) int {
 	if fn, err := L.Load(reader, chunkname); err != nil {
 		L.Push(LNil)
-		L.Push(LString(err.Error()))
+		L.Push(LString(err.Error()).AsLValue())
 		return 2
 	} else {
-		L.Push(fn)
+		L.Push(fn.AsLValue())
 		return 1
 	}
 }
@@ -174,7 +174,7 @@ func baseLoad(L *LState) int {
 	buf := []string{}
 	for {
 		L.SetTop(top)
-		L.Push(fn)
+		L.Push(fn.AsLValue())
 		L.Call(0, 1)
 		ret := L.reg.Pop()
 		if ret == LNil {
@@ -188,7 +188,7 @@ func baseLoad(L *LState) int {
 			}
 		} else {
 			L.Push(LNil)
-			L.Push(LString("reader function must return a string"))
+			L.Push(LString("reader function must return a string").AsLValue())
 			return 2
 		}
 	}
@@ -207,7 +207,7 @@ func baseLoadFile(L *LState) int {
 		reader, err = os.Open(chunkname)
 		if err != nil {
 			L.Push(LNil)
-			L.Push(LString(fmt.Sprintf("can not open file: %v", chunkname)))
+			L.Push(LString(fmt.Sprintf("can not open file: %v", chunkname)).AsLValue())
 			return 2
 		}
 		defer reader.(*os.File).Close()
@@ -252,7 +252,7 @@ func pairsaux(L *LState) int {
 func basePairs(L *LState) int {
 	tb := L.CheckTable(1)
 	L.Push(L.Get(UpvalueIndex(1)))
-	L.Push(tb)
+	L.Push(tb.AsLValue())
 	L.Push(LNil)
 	return 3
 }
@@ -261,21 +261,21 @@ func basePCall(L *LState) int {
 	L.CheckAny(1)
 	v := L.Get(1)
 	if v.Type() != LTFunction && L.GetMetaField(v, "__call").Type() != LTFunction {
-		L.Push(LFalse)
-		L.Push(LString("attempt to call a " + v.Type().String() + " value"))
+		L.Push(LFalse.AsLValue())
+		L.Push(LString("attempt to call a " + v.Type().String() + " value").AsLValue())
 		return 2
 	}
 	nargs := L.GetTop() - 1
 	if err := L.PCall(nargs, MultRet, nil); err != nil {
-		L.Push(LFalse)
+		L.Push(LFalse.AsLValue())
 		if aerr, ok := err.(*ApiError); ok {
 			L.Push(aerr.Object)
 		} else {
-			L.Push(LString(err.Error()))
+			L.Push(LString(err.Error()).AsLValue())
 		}
 		return 2
 	} else {
-		L.Insert(LTrue, 1)
+		L.Insert(LTrue.AsLValue(), 1)
 		return L.GetTop()
 	}
 }
@@ -299,9 +299,9 @@ func base_PrintRegs(L *LState) int {
 
 func baseRawEqual(L *LState) int {
 	if L.CheckAny(1) == L.CheckAny(2) {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 	} else {
-		L.Push(LFalse)
+		L.Push(LFalse.AsLValue())
 	}
 	return 1
 }
@@ -318,9 +318,9 @@ func baseRawSet(L *LState) int {
 
 func baseSelect(L *LState) int {
 	L.CheckTypes(1, LTNumber, LTString)
-	switch lv := L.Get(1).(type) {
-	case LNumber:
-		idx := int(lv)
+	switch v := L.Get(1); v.Type() {
+	case LTNumber:
+		idx := int(v.MustLNumber())
 		num := L.GetTop()
 		if idx < 0 {
 			idx = num + idx
@@ -331,11 +331,11 @@ func baseSelect(L *LState) int {
 			L.ArgError(1, "index out of range")
 		}
 		return num - idx
-	case LString:
-		if string(lv) != "#" {
-			L.ArgError(1, "invalid string '"+string(lv)+"'")
+	case LTString:
+		if string(v.MustLString()) != "#" {
+			L.ArgError(1, "invalid string '"+string(v.MustLString())+"'")
 		}
-		L.Push(LNumber(L.GetTop() - 1))
+		L.Push(LNumber(L.GetTop() - 1).AsLValue())
 		return 1
 	}
 	return 0
@@ -344,23 +344,23 @@ func baseSelect(L *LState) int {
 func baseSetFEnv(L *LState) int {
 	var value LValue
 	if L.GetTop() == 0 {
-		value = LNumber(1)
+		value = LNumber(1).AsLValue()
 	} else {
 		value = L.Get(1)
 	}
 	env := L.CheckTable(2)
 
-	if fn, ok := value.(*LFunction); ok {
+	if fn, ok := value.AsLFunction(); ok {
 		if fn.IsG {
 			L.RaiseError("cannot change the environment of given object")
 		} else {
 			fn.Env = env
-			L.Push(fn)
+			L.Push(fn.AsLValue())
 			return 1
 		}
 	}
 
-	if number, ok := value.(LNumber); ok {
+	if number, ok := value.AsLNumber(); ok {
 		level := int(float64(number))
 		if level <= 0 {
 			L.Env = env
@@ -375,7 +375,7 @@ func baseSetFEnv(L *LState) int {
 			L.RaiseError("cannot change the environment of given object")
 		} else {
 			cf.Fn.Env = env
-			L.Push(cf.Fn)
+			L.Push(cf.Fn.AsLValue())
 			return 1
 		}
 	}
@@ -392,7 +392,7 @@ func baseSetMetatable(L *LState) int {
 	}
 	mt := L.Get(2)
 	if m := L.metatable(obj, true); m != LNil {
-		if tb, ok := m.(*LTable); ok && tb.RawGetString("__metatable") != LNil {
+		if tb, ok := m.AsLTable(); ok && tb.RawGetString("__metatable") != LNil {
 			L.RaiseError("cannot change a protected metatable")
 		}
 	}
@@ -405,16 +405,16 @@ func baseToNumber(L *LState) int {
 	base := L.OptInt(2, 10)
 	noBase := L.Get(2) == LNil
 
-	switch lv := L.CheckAny(1).(type) {
-	case LNumber:
+	switch lv := L.CheckAny(1); lv.Type() {
+	case LTNumber:
 		L.Push(lv)
-	case LString:
-		str := strings.Trim(string(lv), " \n\t")
+	case LTString:
+		str := strings.Trim(string(lv.MustLString()), " \n\t")
 		if strings.Index(str, ".") > -1 {
 			if v, err := strconv.ParseFloat(str, LNumberBit); err != nil {
 				L.Push(LNil)
 			} else {
-				L.Push(LNumber(v))
+				L.Push(LNumber(v).AsLValue())
 			}
 		} else {
 			if noBase && strings.HasPrefix(strings.ToLower(str), "0x") {
@@ -423,7 +423,7 @@ func baseToNumber(L *LState) int {
 			if v, err := strconv.ParseInt(str, base, LNumberBit); err != nil {
 				L.Push(LNil)
 			} else {
-				L.Push(LNumber(v))
+				L.Push(LNumber(v).AsLValue())
 			}
 		}
 	default:
@@ -439,7 +439,7 @@ func baseToString(L *LState) int {
 }
 
 func baseType(L *LState) int {
-	L.Push(LString(L.CheckAny(1).Type().String()))
+	L.Push(LString(L.CheckAny(1).Type().String()).AsLValue())
 	return 1
 }
 
@@ -462,17 +462,17 @@ func baseXPCall(L *LState) int {
 	errfunc := L.CheckFunction(2)
 
 	top := L.GetTop()
-	L.Push(fn)
+	L.Push(fn.AsLValue())
 	if err := L.PCall(0, MultRet, errfunc); err != nil {
-		L.Push(LFalse)
+		L.Push(LFalse.AsLValue())
 		if aerr, ok := err.(*ApiError); ok {
 			L.Push(aerr.Object)
 		} else {
-			L.Push(LString(err.Error()))
+			L.Push(LString(err.Error()).AsLValue())
 		}
 		return 2
 	} else {
-		L.Insert(LTrue, top+1)
+		L.Insert(LTrue.AsLValue(), top+1)
 		return L.GetTop() - top
 	}
 }
@@ -485,8 +485,8 @@ func loModule(L *LState) int {
 	name := L.CheckString(1)
 	loaded := L.GetField(L.Get(RegistryIndex), "_LOADED")
 	tb := L.GetField(loaded, name)
-	if _, ok := tb.(*LTable); !ok {
-		tb = L.FindTable(L.Get(GlobalsIndex).(*LTable), name, 1)
+	if _, ok := tb.AsLTable(); !ok {
+		tb = L.FindTable(L.Get(GlobalsIndex).MustLTable(), name, 1)
 		if tb == LNil {
 			L.RaiseError("name conflict for module: %v", name)
 		}
@@ -494,13 +494,13 @@ func loModule(L *LState) int {
 	}
 	if L.GetField(tb, "_NAME") == LNil {
 		L.SetField(tb, "_M", tb)
-		L.SetField(tb, "_NAME", LString(name))
+		L.SetField(tb, "_NAME", LString(name).AsLValue())
 		names := strings.Split(name, ".")
 		pname := ""
 		if len(names) > 1 {
 			pname = strings.Join(names[:len(names)-1], ".") + "."
 		}
-		L.SetField(tb, "_PACKAGE", LString(pname))
+		L.SetField(tb, "_PACKAGE", LString(pname).AsLValue())
 	}
 
 	caller := L.currentFrame.Parent
@@ -509,7 +509,7 @@ func loModule(L *LState) int {
 	} else if caller.Fn.IsG {
 		L.RaiseError("module() can not be called from GFunctions.")
 	}
-	L.SetFEnv(caller.Fn, tb)
+	L.SetFEnv(caller.Fn.AsLValue(), tb)
 
 	top := L.GetTop()
 	for i := 2; i <= top; i++ {
@@ -528,13 +528,13 @@ func loRequire(L *LState) int {
 	loaded := L.GetField(L.Get(RegistryIndex), "_LOADED")
 	lv := L.GetField(loaded, name)
 	if LVAsBool(lv) {
-		if lv == loopdetection {
+		if lv == loopdetection.AsLValue() {
 			L.RaiseError("loop or previous error loading module: %s", name)
 		}
 		L.Push(lv)
 		return 1
 	}
-	loaders, ok := L.GetField(L.Get(RegistryIndex), "_LOADERS").(*LTable)
+	loaders, ok := L.GetField(L.Get(RegistryIndex), "_LOADERS").AsLTable()
 	if !ok {
 		L.RaiseError("package.loaders must be a table")
 	}
@@ -546,30 +546,30 @@ func loRequire(L *LState) int {
 			L.RaiseError("module %s not found:\n\t%s, ", name, strings.Join(messages, "\n\t"))
 		}
 		L.Push(loader)
-		L.Push(LString(name))
+		L.Push(LString(name).AsLValue())
 		L.Call(1, 1)
 		ret := L.reg.Pop()
-		switch retv := ret.(type) {
-		case *LFunction:
-			modasfunc = retv
+		switch ret.Type() {
+		case LTFunction:
+			modasfunc = ret
 			goto loopbreak
-		case LString:
-			messages = append(messages, string(retv))
+		case LTString:
+			messages = append(messages, string(ret.MustLString()))
 		}
 	}
 loopbreak:
-	L.SetField(loaded, name, loopdetection)
+	L.SetField(loaded, name, loopdetection.AsLValue())
 	L.Push(modasfunc)
-	L.Push(LString(name))
+	L.Push(LString(name).AsLValue())
 	L.Call(1, 1)
 	ret := L.reg.Pop()
 	modv := L.GetField(loaded, name)
-	if ret != LNil && modv == loopdetection {
+	if ret != LNil && modv == loopdetection.AsLValue() {
 		L.SetField(loaded, name, ret)
 		L.Push(ret)
-	} else if modv == loopdetection {
-		L.SetField(loaded, name, LTrue)
-		L.Push(LTrue)
+	} else if modv == loopdetection.AsLValue() {
+		L.SetField(loaded, name, LTrue.AsLValue())
+		L.Push(LTrue.AsLValue())
 	} else {
 		L.Push(modv)
 	}
@@ -583,12 +583,12 @@ loopbreak:
 func baseNewProxy(L *LState) int {
 	ud := L.NewUserData()
 	L.SetTop(1)
-	if L.Get(1) == LTrue {
-		L.SetMetatable(ud, L.NewTable())
-	} else if d, ok := L.Get(1).(*LUserData); ok {
-		L.SetMetatable(ud, L.GetMetatable(d))
+	if L.Get(1) == LTrue.AsLValue() {
+		L.SetMetatable(ud.AsLValue(), L.NewTable().AsLValue())
+	} else if d, ok := L.Get(1).AsLUserData(); ok {
+		L.SetMetatable(ud.AsLValue(), L.GetMetatable(d.AsLValue()))
 	}
-	L.Push(ud)
+	L.Push(ud.AsLValue())
 	return 1
 }
 

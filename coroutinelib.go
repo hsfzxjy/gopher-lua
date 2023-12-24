@@ -31,7 +31,7 @@ func coCreate(L *LState) int {
 		Parent:     nil,
 		TailCall:   0,
 	})
-	L.Push(newthread)
+	L.Push(newthread.AsLValue())
 	return 1
 }
 
@@ -47,8 +47,8 @@ func coResume(L *LState) int {
 			L.RaiseError(msg)
 			return 0
 		}
-		L.Push(LFalse)
-		L.Push(LString(msg))
+		L.Push(LFalse.AsLValue())
+		L.Push(LString(msg).AsLValue())
 		return 2
 	}
 	if th.Dead {
@@ -57,8 +57,8 @@ func coResume(L *LState) int {
 			L.RaiseError(msg)
 			return 0
 		}
-		L.Push(LFalse)
-		L.Push(LString(msg))
+		L.Push(LFalse.AsLValue())
+		L.Push(LString(msg).AsLValue())
 		return 2
 	}
 	th.Parent = L
@@ -86,17 +86,17 @@ func coRunning(L *LState) int {
 		L.Push(LNil)
 		return 1
 	}
-	L.Push(L.G.CurrentThread)
+	L.Push(L.G.CurrentThread.AsLValue())
 	return 1
 }
 
 func coStatus(L *LState) int {
-	L.Push(LString(L.Status(L.CheckThread(1))))
+	L.Push(LString(L.Status(L.CheckThread(1))).AsLValue())
 	return 1
 }
 
 func wrapaux(L *LState) int {
-	L.Insert(L.ToThread(UpvalueIndex(1)), 1)
+	L.Insert(L.ToThread(UpvalueIndex(1)).AsLValue(), 1)
 	return coResume(L)
 }
 
@@ -105,7 +105,7 @@ func coWrap(L *LState) int {
 	L.CheckThread(L.GetTop()).wrapped = true
 	v := L.Get(L.GetTop())
 	L.Pop(1)
-	L.Push(L.NewClosure(wrapaux, v))
+	L.Push(L.NewClosure(wrapaux, v).AsLValue())
 	return 1
 }
 

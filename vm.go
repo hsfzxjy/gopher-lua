@@ -97,7 +97,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			if rg.top < oldtop {
 				nilRange := rg.array[rg.top:oldtop]
 				for i := range nilRange {
-					nilRange[i] = nil
+					nilRange[i] = LValue{}
 				}
 			}
 		}
@@ -135,7 +135,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			if rg.top < oldtop {
 				nilRange := rg.array[rg.top:oldtop]
 				for i := range nilRange {
-					nilRange[i] = nil
+					nilRange[i] = LValue{}
 				}
 			}
 		}
@@ -165,7 +165,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 				if rg.top < oldtop {
 					nilRange := rg.array[rg.top:oldtop]
 					for i := range nilRange {
-						nilRange[i] = nil
+						nilRange[i] = LValue{}
 					}
 				}
 			}
@@ -182,9 +182,9 @@ func switchToParentThread(L *LState, nargs int, haserror bool, kill bool) {
 	L.Parent = nil
 	if !L.wrapped {
 		if haserror {
-			parent.Push(LFalse)
+			parent.Push(LFalse.AsLValue())
 		} else {
-			parent.Push(LTrue)
+			parent.Push(LTrue.AsLValue())
 		}
 	}
 	L.XMoveTo(parent, nargs)
@@ -255,7 +255,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 		if rg.top < oldtop {
 			nilRange := rg.array[rg.top:oldtop]
 			for i := range nilRange {
-				nilRange[i] = nil
+				nilRange[i] = LValue{}
 			}
 		}
 	}
@@ -275,7 +275,7 @@ func threadRun(L *LState) {
 			if v, ok := rcv.(*ApiError); ok {
 				lv = v.Object
 			} else {
-				lv = LString(fmt.Sprint(rcv))
+				lv = LString(fmt.Sprint(rcv)).AsLValue()
 			}
 			if parent := L.Parent; parent != nil {
 				if L.wrapped {
@@ -323,7 +323,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -353,7 +353,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -381,7 +381,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -413,7 +413,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -444,7 +444,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -465,7 +465,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -499,7 +499,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -530,7 +530,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -545,7 +545,7 @@ func init() {
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
 			//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
-			v := L.getFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx])
+			v := L.getFieldString(cf.Fn.Env.AsLValue(), cf.Fn.Proto.stringConstants[Bx])
 			// this section is inlined by go-inline
 			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 			{
@@ -561,7 +561,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -592,7 +592,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -623,7 +623,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -638,7 +638,7 @@ func init() {
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
 			//L.setField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx], reg.Get(RA))
-			L.setFieldString(cf.Fn.Env, cf.Fn.Proto.stringConstants[Bx], reg.Get(RA))
+			L.setFieldString(cf.Fn.Env.AsLValue(), cf.Fn.Proto.stringConstants[Bx], reg.Get(RA))
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETUPVAL
@@ -697,7 +697,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -729,7 +729,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -749,7 +749,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -770,7 +770,7 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
 			unaryv := L.rkValue(B)
-			if nm, ok := unaryv.(LNumber); ok {
+			if nm, ok := unaryv.AsLNumber(); ok {
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 				{
@@ -786,7 +786,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -812,12 +812,12 @@ func init() {
 								rg.resize(requiredSize)
 							}
 						}
-						rg.array[regi] = vali
+						rg.array[regi] = vali.AsLValue()
 						if regi >= rg.top {
 							rg.top = regi + 1
 						}
 					}
-				} else if str, ok1 := unaryv.(LString); ok1 {
+				} else if str, ok1 := unaryv.AsLString(); ok1 {
 					if num, err := parseNumber(string(str)); err == nil {
 						// this section is inlined by go-inline
 						// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
@@ -834,7 +834,7 @@ func init() {
 									rg.resize(requiredSize)
 								}
 							}
-							rg.array[regi] = vali
+							rg.array[regi] = vali.AsLValue()
 							if regi >= rg.top {
 								rg.top = regi + 1
 							}
@@ -871,7 +871,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -892,7 +892,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -907,8 +907,9 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			switch lv := L.rkValue(B).(type) {
-			case LString:
+			switch lv := L.rkValue(B); lv.Type() {
+			case LTString:
+				lv := lv.MustLString()
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 				{
@@ -937,7 +938,7 @@ func init() {
 					L.Call(1, 1)
 					ret := reg.Pop()
 					if ret.Type() == LTNumber {
-						v, _ := ret.(LNumber)
+						v, _ := ret.AsLNumber()
 						// this section is inlined by go-inline
 						// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 						{
@@ -974,7 +975,7 @@ func init() {
 									rg.resize(requiredSize)
 								}
 							}
-							rg.array[regi] = vali
+							rg.array[regi] = vali.AsLValue()
 							if regi >= rg.top {
 								rg.top = regi + 1
 							}
@@ -986,7 +987,7 @@ func init() {
 					{
 						rg := reg
 						regi := RA
-						vali := LNumber(lv.(*LTable).Len())
+						vali := LNumber(lv.MustLTable().Len())
 						newSize := regi + 1
 						// this section is inlined by go-inline
 						// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
@@ -1033,7 +1034,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -1085,8 +1086,8 @@ func init() {
 			rhs := L.rkValue(C)
 			ret := false
 
-			if v1, ok1 := lhs.(LNumber); ok1 {
-				if v2, ok2 := rhs.(LNumber); ok2 {
+			if v1, ok1 := lhs.AsLNumber(); ok1 {
+				if v2, ok2 := rhs.AsLNumber(); ok2 {
 					ret = v1 <= v2
 				} else {
 					L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -1097,7 +1098,7 @@ func init() {
 				}
 				switch lhs.Type() {
 				case LTString:
-					ret = strCmp(string(lhs.(LString)), string(rhs.(LString))) <= 0
+					ret = strCmp(string(lhs.MustLString()), string(rhs.MustLString())) <= 0
 				default:
 					switch objectRational(L, lhs, rhs, "__le") {
 					case 1:
@@ -1155,7 +1156,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -1181,7 +1182,7 @@ func init() {
 			nret := C - 1
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.(*LFunction); ok {
+			if fn, ok := lv.AsLFunction(); ok {
 				callable = fn
 				meta = false
 			} else {
@@ -1290,9 +1291,9 @@ func init() {
 									for i := 0; i < nvarargs; i++ {
 										argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
 									}
-									argtb.RawSetString("n", LNumber(nvarargs))
+									argtb.RawSetString("n", LNumber(nvarargs).AsLValue())
 									//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
-									ls.reg.array[cf.LocalBase+nargs+np] = argtb
+									ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 								} else {
 									ls.reg.array[cf.LocalBase+nargs+np] = LNil
 								}
@@ -1324,7 +1325,7 @@ func init() {
 			lv := reg.Get(RA)
 			var callable *LFunction
 			var meta bool
-			if fn, ok := lv.(*LFunction); ok {
+			if fn, ok := lv.AsLFunction(); ok {
 				callable = fn
 				meta = false
 			} else {
@@ -1472,9 +1473,9 @@ func init() {
 									for i := 0; i < nvarargs; i++ {
 										argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
 									}
-									argtb.RawSetString("n", LNumber(nvarargs))
+									argtb.RawSetString("n", LNumber(nvarargs).AsLValue())
 									//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
-									ls.reg.array[cf.LocalBase+nargs+np] = argtb
+									ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 								} else {
 									ls.reg.array[cf.LocalBase+nargs+np] = LNil
 								}
@@ -1521,7 +1522,7 @@ func init() {
 					if rg.top < oldtop {
 						nilRange := rg.array[rg.top:oldtop]
 						for i := range nilRange {
-							nilRange[i] = nil
+							nilRange[i] = LValue{}
 						}
 					}
 				}
@@ -1598,7 +1599,7 @@ func init() {
 							if rg.top < oldtop {
 								nilRange := rg.array[rg.top:oldtop]
 								for i := range nilRange {
-									nilRange[i] = nil
+									nilRange[i] = LValue{}
 								}
 							}
 						}
@@ -1636,7 +1637,7 @@ func init() {
 							if rg.top < oldtop {
 								nilRange := rg.array[rg.top:oldtop]
 								for i := range nilRange {
-									nilRange[i] = nil
+									nilRange[i] = LValue{}
 								}
 							}
 						}
@@ -1666,7 +1667,7 @@ func init() {
 								if rg.top < oldtop {
 									nilRange := rg.array[rg.top:oldtop]
 									for i := range nilRange {
-										nilRange[i] = nil
+										nilRange[i] = LValue{}
 									}
 								}
 							}
@@ -1708,7 +1709,7 @@ func init() {
 						if rg.top < oldtop {
 							nilRange := rg.array[rg.top:oldtop]
 							for i := range nilRange {
-								nilRange[i] = nil
+								nilRange[i] = LValue{}
 							}
 						}
 					}
@@ -1746,7 +1747,7 @@ func init() {
 						if rg.top < oldtop {
 							nilRange := rg.array[rg.top:oldtop]
 							for i := range nilRange {
-								nilRange[i] = nil
+								nilRange[i] = LValue{}
 							}
 						}
 					}
@@ -1776,7 +1777,7 @@ func init() {
 							if rg.top < oldtop {
 								nilRange := rg.array[rg.top:oldtop]
 								for i := range nilRange {
-									nilRange[i] = nil
+									nilRange[i] = LValue{}
 								}
 							}
 						}
@@ -1795,9 +1796,9 @@ func init() {
 			lbase := cf.LocalBase
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
-			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
-				if limit, ok2 := reg.Get(RA + 1).(LNumber); ok2 {
-					if step, ok3 := reg.Get(RA + 2).(LNumber); ok3 {
+			if init, ok1 := reg.Get(RA).AsLNumber(); ok1 {
+				if limit, ok2 := reg.Get(RA + 1).AsLNumber(); ok2 {
+					if step, ok3 := reg.Get(RA + 2).AsLNumber(); ok3 {
 						init += step
 						v := LNumber(init)
 						// this section is inlined by go-inline
@@ -1867,7 +1868,7 @@ func init() {
 								if rg.top < oldtopi {
 									nilRange := rg.array[rg.top:oldtopi]
 									for i := range nilRange {
-										nilRange[i] = nil
+										nilRange[i] = LValue{}
 									}
 								}
 								//for i := rg.top; i < oldtop; i++ {
@@ -1893,8 +1894,8 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			Sbx := int(inst&0x3ffff) - opMaxArgSbx //GETSBX
-			if init, ok1 := reg.Get(RA).(LNumber); ok1 {
-				if step, ok2 := reg.Get(RA + 2).(LNumber); ok2 {
+			if init, ok1 := reg.Get(RA).AsLNumber(); ok1 {
+				if step, ok2 := reg.Get(RA + 2).AsLNumber(); ok2 {
 					// this section is inlined by go-inline
 					// source function is 'func (rg *registry) SetNumber(regi int, vali LNumber) ' in '_state.go'
 					{
@@ -1955,7 +1956,7 @@ func init() {
 				if rg.top < oldtopi {
 					nilRange := rg.array[rg.top:oldtopi]
 					for i := range nilRange {
-						nilRange[i] = nil
+						nilRange[i] = LValue{}
 					}
 				}
 				//for i := rg.top; i < oldtop; i++ {
@@ -1977,7 +1978,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -1997,7 +1998,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -2017,7 +2018,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -2039,7 +2040,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = vali
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -2063,7 +2064,7 @@ func init() {
 				cf.Pc++
 			}
 			offset := (C - 1) * FieldsPerFlush
-			table := reg.Get(RA).(*LTable)
+			table := reg.Get(RA).MustLTable()
 			nelem := B
 			if B == 0 {
 				nelem = reg.Top() - RA - 1
@@ -2124,7 +2125,7 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				rg.array[regi] = vali
+				rg.array[regi] = vali.AsLValue()
 				if regi >= rg.top {
 					rg.top = regi + 1
 				}
@@ -2194,7 +2195,7 @@ func init() {
 				if rg.top < oldtop {
 					nilRange := rg.array[rg.top:oldtop]
 					for i := range nilRange {
-						nilRange[i] = nil
+						nilRange[i] = LValue{}
 					}
 				}
 			}
@@ -2217,8 +2218,8 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 	C := int(inst>>9) & 0x1ff //GETC
 	lhs := L.rkValue(B)
 	rhs := L.rkValue(C)
-	v1, ok1 := lhs.(LNumber)
-	v2, ok2 := rhs.(LNumber)
+	v1, ok1 := lhs.AsLNumber()
+	v2, ok2 := rhs.AsLNumber()
 	if ok1 && ok2 {
 		v := numberArith(L, opcode, LNumber(v1), LNumber(v2))
 		// this section is inlined by go-inline
@@ -2258,7 +2259,7 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 					rg.resize(requiredSize)
 				}
 			}
-			rg.array[regi] = vali
+			rg.array[regi] = vali.AsLValue()
 			if regi >= rg.top {
 				rg.top = regi + 1
 			}
@@ -2315,26 +2316,26 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 		event = "__pow"
 	}
 	op := L.metaOp2(lhs, rhs, event)
-	if _, ok := op.(*LFunction); ok {
+	if _, ok := op.AsLFunction(); ok {
 		L.reg.Push(op)
 		L.reg.Push(lhs)
 		L.reg.Push(rhs)
 		L.Call(2, 1)
 		return L.reg.Pop()
 	}
-	if str, ok := lhs.(LString); ok {
+	if str, ok := lhs.AsLString(); ok {
 		if lnum, err := parseNumber(string(str)); err == nil {
-			lhs = lnum
+			lhs = lnum.AsLValue()
 		}
 	}
-	if str, ok := rhs.(LString); ok {
+	if str, ok := rhs.AsLString(); ok {
 		if rnum, err := parseNumber(string(str)); err == nil {
-			rhs = rnum
+			rhs = rnum.AsLValue()
 		}
 	}
-	if v1, ok1 := lhs.(LNumber); ok1 {
-		if v2, ok2 := rhs.(LNumber); ok2 {
-			return numberArith(L, opcode, LNumber(v1), LNumber(v2))
+	if v1, ok1 := lhs.AsLNumber(); ok1 {
+		if v2, ok2 := rhs.AsLNumber(); ok2 {
+			return numberArith(L, opcode, LNumber(v1), LNumber(v2)).AsLValue()
 		}
 	}
 	L.RaiseError(fmt.Sprintf("cannot perform %v operation between %v and %v",
@@ -2374,7 +2375,7 @@ func stringConcat(L *LState, total, last int) LValue {
 				i--
 				total--
 			}
-			rhs = LString(strings.Join(buf, ""))
+			rhs = LString(strings.Join(buf, "")).AsLValue()
 		}
 	}
 	return rhs
@@ -2382,8 +2383,8 @@ func stringConcat(L *LState, total, last int) LValue {
 
 func lessThan(L *LState, lhs, rhs LValue) bool {
 	// optimization for numbers
-	if v1, ok1 := lhs.(LNumber); ok1 {
-		if v2, ok2 := rhs.(LNumber); ok2 {
+	if v1, ok1 := lhs.AsLNumber(); ok1 {
+		if v2, ok2 := rhs.AsLNumber(); ok2 {
 			return v1 < v2
 		}
 		L.RaiseError("attempt to compare %v with %v", lhs.Type().String(), rhs.Type().String())
@@ -2395,7 +2396,7 @@ func lessThan(L *LState, lhs, rhs LValue) bool {
 	ret := false
 	switch lhs.Type() {
 	case LTString:
-		ret = strCmp(string(lhs.(LString)), string(rhs.(LString))) < 0
+		ret = strCmp(string(lhs.MustLString()), string(rhs.MustLString())) < 0
 	default:
 		ret = objectRationalWithError(L, lhs, rhs, "__lt")
 	}
@@ -2413,13 +2414,13 @@ func equals(L *LState, lhs, rhs LValue, raw bool) bool {
 	case LTNil:
 		ret = true
 	case LTNumber:
-		v1, _ := lhs.(LNumber)
-		v2, _ := rhs.(LNumber)
+		v1, _ := lhs.AsLNumber()
+		v2, _ := rhs.AsLNumber()
 		ret = v1 == v2
 	case LTBool:
-		ret = bool(lhs.(LBool)) == bool(rhs.(LBool))
+		ret = bool(lhs.MustLBool()) == bool(rhs.MustLBool())
 	case LTString:
-		ret = string(lhs.(LString)) == string(rhs.(LString))
+		ret = string(lhs.MustLString()) == string(rhs.MustLString())
 	case LTUserData, LTTable:
 		if lhs == rhs {
 			ret = true

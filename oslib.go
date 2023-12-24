@@ -16,11 +16,11 @@ func init() {
 func getIntField(L *LState, tb *LTable, key string, v int) int {
 	ret := tb.RawGetString(key)
 
-	switch lv := ret.(type) {
-	case LNumber:
-		return int(lv)
-	case LString:
-		slv := string(lv)
+	switch lv := ret; lv.Type() {
+	case LTNumber:
+		return int(lv.MustLNumber())
+	case LTString:
+		slv := string(lv.MustLString())
 		slv = strings.TrimLeft(slv, " ")
 		if strings.HasPrefix(slv, "0") && !strings.HasPrefix(slv, "0x") && !strings.HasPrefix(slv, "0X") {
 			// Standard lua interpreter only support decimal and hexadecimal
@@ -41,7 +41,7 @@ func getIntField(L *LState, tb *LTable, key string, v int) int {
 
 func getBoolField(L *LState, tb *LTable, key string, v bool) bool {
 	ret := tb.RawGetString(key)
-	if lb, ok := ret.(LBool); ok {
+	if lb, ok := ret.AsLBool(); ok {
 		return bool(lb)
 	}
 	return v
@@ -69,12 +69,12 @@ var osFuncs = map[string]LGFunction{
 }
 
 func osClock(L *LState) int {
-	L.Push(LNumber(float64(time.Now().Sub(startedAt)) / float64(time.Second)))
+	L.Push(LNumber(float64(time.Now().Sub(startedAt)) / float64(time.Second)).AsLValue())
 	return 1
 }
 
 func osDiffTime(L *LState) int {
-	L.Push(LNumber(L.CheckInt64(1) - L.CheckInt64(2)))
+	L.Push(LNumber(L.CheckInt64(1) - L.CheckInt64(2)).AsLValue())
 	return 1
 }
 
@@ -85,16 +85,16 @@ func osExecute(L *LState) int {
 	args = append([]string{cmd}, args...)
 	process, err := os.StartProcess(cmd, args, &procAttr)
 	if err != nil {
-		L.Push(LNumber(1))
+		L.Push(LNumber(1).AsLValue())
 		return 1
 	}
 
 	ps, err := process.Wait()
 	if err != nil || !ps.Success() {
-		L.Push(LNumber(1))
+		L.Push(LNumber(1).AsLValue())
 		return 1
 	}
-	L.Push(LNumber(0))
+	L.Push(LNumber(0).AsLValue())
 	return 1
 }
 
@@ -122,21 +122,21 @@ func osDate(L *LState) int {
 		}
 		if strings.HasPrefix(cfmt, "*t") {
 			ret := L.NewTable()
-			ret.RawSetString("year", LNumber(t.Year()))
-			ret.RawSetString("month", LNumber(t.Month()))
-			ret.RawSetString("day", LNumber(t.Day()))
-			ret.RawSetString("hour", LNumber(t.Hour()))
-			ret.RawSetString("min", LNumber(t.Minute()))
-			ret.RawSetString("sec", LNumber(t.Second()))
-			ret.RawSetString("wday", LNumber(t.Weekday()+1))
+			ret.RawSetString("year", LNumber(t.Year()).AsLValue())
+			ret.RawSetString("month", LNumber(t.Month()).AsLValue())
+			ret.RawSetString("day", LNumber(t.Day()).AsLValue())
+			ret.RawSetString("hour", LNumber(t.Hour()).AsLValue())
+			ret.RawSetString("min", LNumber(t.Minute()).AsLValue())
+			ret.RawSetString("sec", LNumber(t.Second()).AsLValue())
+			ret.RawSetString("wday", LNumber(t.Weekday()+1).AsLValue())
 			// TODO yday & dst
-			ret.RawSetString("yday", LNumber(0))
-			ret.RawSetString("isdst", LFalse)
-			L.Push(ret)
+			ret.RawSetString("yday", LNumber(0).AsLValue())
+			ret.RawSetString("isdst", LFalse.AsLValue())
+			L.Push(ret.AsLValue())
 			return 1
 		}
 	}
-	L.Push(LString(strftime(t, cfmt)))
+	L.Push(LString(strftime(t, cfmt)).AsLValue())
 	return 1
 }
 
@@ -145,7 +145,7 @@ func osGetEnv(L *LState) int {
 	if len(v) == 0 {
 		L.Push(LNil)
 	} else {
-		L.Push(LString(v))
+		L.Push(LString(v).AsLValue())
 	}
 	return 1
 }
@@ -154,10 +154,10 @@ func osRemove(L *LState) int {
 	err := os.Remove(L.CheckString(1))
 	if err != nil {
 		L.Push(LNil)
-		L.Push(LString(err.Error()))
+		L.Push(LString(err.Error()).AsLValue())
 		return 2
 	} else {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 		return 1
 	}
 }
@@ -166,17 +166,17 @@ func osRename(L *LState) int {
 	err := os.Rename(L.CheckString(1), L.CheckString(2))
 	if err != nil {
 		L.Push(LNil)
-		L.Push(LString(err.Error()))
+		L.Push(LString(err.Error()).AsLValue())
 		return 2
 	} else {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 		return 1
 	}
 }
 
 func osSetLocale(L *LState) int {
 	// setlocale is not supported
-	L.Push(LFalse)
+	L.Push(LFalse.AsLValue())
 	return 1
 }
 
@@ -184,23 +184,23 @@ func osSetEnv(L *LState) int {
 	err := os.Setenv(L.CheckString(1), L.CheckString(2))
 	if err != nil {
 		L.Push(LNil)
-		L.Push(LString(err.Error()))
+		L.Push(LString(err.Error()).AsLValue())
 		return 2
 	} else {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 		return 1
 	}
 }
 
 func osTime(L *LState) int {
 	if L.GetTop() == 0 {
-		L.Push(LNumber(time.Now().Unix()))
+		L.Push(LNumber(time.Now().Unix()).AsLValue())
 	} else {
 		lv := L.CheckAny(1)
 		if lv == LNil {
-			L.Push(LNumber(time.Now().Unix()))
+			L.Push(LNumber(time.Now().Unix()).AsLValue())
 		} else {
-			tbl, ok := lv.(*LTable)
+			tbl, ok := lv.AsLTable()
 			if !ok {
 				L.TypeError(1, LTTable)
 			}
@@ -216,7 +216,7 @@ func osTime(L *LState) int {
 			if false {
 				print(isdst)
 			}
-			L.Push(LNumber(t.Unix()))
+			L.Push(LNumber(t.Unix()).AsLValue())
 		}
 	}
 	return 1
@@ -229,7 +229,7 @@ func osTmpname(L *LState) int {
 	}
 	file.Close()
 	os.Remove(file.Name()) // ignore errors
-	L.Push(LString(file.Name()))
+	L.Push(LString(file.Name()).AsLValue())
 	return 1
 }
 

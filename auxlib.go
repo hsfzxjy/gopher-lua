@@ -19,7 +19,7 @@ func (ls *LState) CheckAny(n int) LValue {
 
 func (ls *LState) CheckInt(n int) int {
 	v := ls.Get(n)
-	if intv, ok := v.(LNumber); ok {
+	if intv, ok := v.AsLNumber(); ok {
 		return int(intv)
 	}
 	ls.TypeError(n, LTNumber)
@@ -28,7 +28,7 @@ func (ls *LState) CheckInt(n int) int {
 
 func (ls *LState) CheckInt64(n int) int64 {
 	v := ls.Get(n)
-	if intv, ok := v.(LNumber); ok {
+	if intv, ok := v.AsLNumber(); ok {
 		return int64(intv)
 	}
 	ls.TypeError(n, LTNumber)
@@ -37,10 +37,10 @@ func (ls *LState) CheckInt64(n int) int64 {
 
 func (ls *LState) CheckNumber(n int) LNumber {
 	v := ls.Get(n)
-	if lv, ok := v.(LNumber); ok {
+	if lv, ok := v.AsLNumber(); ok {
 		return lv
 	}
-	if lv, ok := v.(LString); ok {
+	if lv, ok := v.AsLString(); ok {
 		if num, err := parseNumber(string(lv)); err == nil {
 			return num
 		}
@@ -51,7 +51,7 @@ func (ls *LState) CheckNumber(n int) LNumber {
 
 func (ls *LState) CheckString(n int) string {
 	v := ls.Get(n)
-	if lv, ok := v.(LString); ok {
+	if lv, ok := v.AsLString(); ok {
 		return string(lv)
 	} else if LVCanConvToString(v) {
 		return ls.ToString(n)
@@ -62,7 +62,7 @@ func (ls *LState) CheckString(n int) string {
 
 func (ls *LState) CheckBool(n int) bool {
 	v := ls.Get(n)
-	if lv, ok := v.(LBool); ok {
+	if lv, ok := v.AsLBool(); ok {
 		return bool(lv)
 	}
 	ls.TypeError(n, LTBool)
@@ -71,7 +71,7 @@ func (ls *LState) CheckBool(n int) bool {
 
 func (ls *LState) CheckTable(n int) *LTable {
 	v := ls.Get(n)
-	if lv, ok := v.(*LTable); ok {
+	if lv, ok := v.AsLTable(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTTable)
@@ -80,7 +80,7 @@ func (ls *LState) CheckTable(n int) *LTable {
 
 func (ls *LState) CheckFunction(n int) *LFunction {
 	v := ls.Get(n)
-	if lv, ok := v.(*LFunction); ok {
+	if lv, ok := v.AsLFunction(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTFunction)
@@ -89,7 +89,7 @@ func (ls *LState) CheckFunction(n int) *LFunction {
 
 func (ls *LState) CheckUserData(n int) *LUserData {
 	v := ls.Get(n)
-	if lv, ok := v.(*LUserData); ok {
+	if lv, ok := v.AsLUserData(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTUserData)
@@ -98,7 +98,7 @@ func (ls *LState) CheckUserData(n int) *LUserData {
 
 func (ls *LState) CheckThread(n int) *LState {
 	v := ls.Get(n)
-	if lv, ok := v.(*LState); ok {
+	if lv, ok := v.AsLState(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTThread)
@@ -146,7 +146,7 @@ func (ls *LState) OptInt(n int, d int) int {
 	if v == LNil {
 		return d
 	}
-	if intv, ok := v.(LNumber); ok {
+	if intv, ok := v.AsLNumber(); ok {
 		return int(intv)
 	}
 	ls.TypeError(n, LTNumber)
@@ -158,7 +158,7 @@ func (ls *LState) OptInt64(n int, d int64) int64 {
 	if v == LNil {
 		return d
 	}
-	if intv, ok := v.(LNumber); ok {
+	if intv, ok := v.AsLNumber(); ok {
 		return int64(intv)
 	}
 	ls.TypeError(n, LTNumber)
@@ -170,7 +170,7 @@ func (ls *LState) OptNumber(n int, d LNumber) LNumber {
 	if v == LNil {
 		return d
 	}
-	if lv, ok := v.(LNumber); ok {
+	if lv, ok := v.AsLNumber(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTNumber)
@@ -182,7 +182,7 @@ func (ls *LState) OptString(n int, d string) string {
 	if v == LNil {
 		return d
 	}
-	if lv, ok := v.(LString); ok {
+	if lv, ok := v.AsLString(); ok {
 		return string(lv)
 	}
 	ls.TypeError(n, LTString)
@@ -194,7 +194,7 @@ func (ls *LState) OptBool(n int, d bool) bool {
 	if v == LNil {
 		return d
 	}
-	if lv, ok := v.(LBool); ok {
+	if lv, ok := v.AsLBool(); ok {
 		return bool(lv)
 	}
 	ls.TypeError(n, LTBool)
@@ -206,7 +206,7 @@ func (ls *LState) OptTable(n int, d *LTable) *LTable {
 	if v == LNil {
 		return d
 	}
-	if lv, ok := v.(*LTable); ok {
+	if lv, ok := v.AsLTable(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTTable)
@@ -218,7 +218,7 @@ func (ls *LState) OptFunction(n int, d *LFunction) *LFunction {
 	if v == LNil {
 		return d
 	}
-	if lv, ok := v.(*LFunction); ok {
+	if lv, ok := v.AsLFunction(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTFunction)
@@ -230,7 +230,7 @@ func (ls *LState) OptUserData(n int, d *LUserData) *LUserData {
 	if v == LNil {
 		return d
 	}
-	if lv, ok := v.(*LUserData); ok {
+	if lv, ok := v.AsLUserData(); ok {
 		return lv
 	}
 	ls.TypeError(n, LTUserData)
@@ -268,18 +268,18 @@ func (ls *LState) FindTable(obj *LTable, n string, size int) LValue {
 		if curobj.Type() != LTTable {
 			return LNil
 		}
-		nextobj := ls.RawGet(curobj, LString(name))
+		nextobj := ls.RawGet(curobj, LString(name).AsLValue())
 		if nextobj == LNil {
 			tb := ls.CreateTable(0, size)
-			ls.RawSet(curobj, LString(name), tb)
+			ls.RawSet(curobj, LString(name).AsLValue(), tb.AsLValue())
 			curobj = tb
 		} else if nextobj.Type() != LTTable {
 			return LNil
 		} else {
-			curobj = nextobj.(*LTable)
+			curobj = nextobj.MustLTable()
 		}
 	}
-	return curobj
+	return curobj.AsLValue()
 }
 
 /* }}} */
@@ -287,18 +287,18 @@ func (ls *LState) FindTable(obj *LTable, n string, size int) LValue {
 /* register operations {{{ */
 
 func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValue {
-	tb := ls.FindTable(ls.Get(RegistryIndex).(*LTable), "_LOADED", 1)
+	tb := ls.FindTable(ls.Get(RegistryIndex).MustLTable(), "_LOADED", 1)
 	mod := ls.GetField(tb, name)
 	if mod.Type() != LTTable {
-		newmod := ls.FindTable(ls.Get(GlobalsIndex).(*LTable), name, len(funcs))
-		if newmodtb, ok := newmod.(*LTable); !ok {
+		newmod := ls.FindTable(ls.Get(GlobalsIndex).MustLTable(), name, len(funcs))
+		if newmodtb, ok := newmod.AsLTable(); !ok {
 			ls.RaiseError("name conflict for module(%v)", name)
 		} else {
 			for fname, fn := range funcs {
-				newmodtb.RawSetString(fname, ls.NewFunction(fn))
+				newmodtb.RawSetString(fname, ls.NewFunction(fn).AsLValue())
 			}
-			ls.SetField(tb, name, newmodtb)
-			return newmodtb
+			ls.SetField(tb, name, newmodtb.AsLValue())
+			return newmodtb.AsLValue()
 		}
 	}
 	return mod
@@ -306,7 +306,7 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 
 func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...LValue) *LTable {
 	for fname, fn := range funcs {
-		tb.RawSetString(fname, ls.NewClosure(fn, upvalues...))
+		tb.RawSetString(fname, ls.NewClosure(fn, upvalues...).AsLValue())
 	}
 	return tb
 }
@@ -318,11 +318,11 @@ func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...
 func (ls *LState) NewTypeMetatable(typ string) *LTable {
 	regtable := ls.Get(RegistryIndex)
 	mt := ls.GetField(regtable, typ)
-	if tb, ok := mt.(*LTable); ok {
+	if tb, ok := mt.AsLTable(); ok {
 		return tb
 	}
 	mtnew := ls.NewTable()
-	ls.SetField(regtable, typ, mtnew)
+	ls.SetField(regtable, typ, mtnew.AsLValue())
 	return mtnew
 }
 
@@ -397,7 +397,7 @@ func (ls *LState) DoFile(path string) error {
 	if fn, err := ls.LoadFile(path); err != nil {
 		return err
 	} else {
-		ls.Push(fn)
+		ls.Push(fn.AsLValue())
 		return ls.PCall(0, MultRet, nil)
 	}
 }
@@ -406,7 +406,7 @@ func (ls *LState) DoString(source string) error {
 	if fn, err := ls.LoadString(source); err != nil {
 		return err
 	} else {
-		ls.Push(fn)
+		ls.Push(fn.AsLValue())
 		return ls.PCall(0, MultRet, nil)
 	}
 }
@@ -418,29 +418,29 @@ func (ls *LState) DoString(source string) error {
 // ToStringMeta returns string representation of given LValue.
 // This method calls the `__tostring` meta method if defined.
 func (ls *LState) ToStringMeta(lv LValue) LValue {
-	if fn, ok := ls.metaOp1(lv, "__tostring").(*LFunction); ok {
-		ls.Push(fn)
+	if fn, ok := ls.metaOp1(lv, "__tostring").AsLFunction(); ok {
+		ls.Push(fn.AsLValue())
 		ls.Push(lv)
 		ls.Call(1, 1)
 		return ls.reg.Pop()
 	} else {
-		return LString(lv.String())
+		return LString(lv.String()).AsLValue()
 	}
 }
 
 // Set a module loader to the package.preload table.
 func (ls *LState) PreloadModule(name string, loader LGFunction) {
 	preload := ls.GetField(ls.GetField(ls.Get(EnvironIndex), "package"), "preload")
-	if _, ok := preload.(*LTable); !ok {
+	if _, ok := preload.AsLTable(); !ok {
 		ls.RaiseError("package.preload must be a table")
 	}
-	ls.SetField(preload, name, ls.NewFunction(loader))
+	ls.SetField(preload, name, ls.NewFunction(loader).AsLValue())
 }
 
 // Checks whether the given index is an LChannel and returns this channel.
 func (ls *LState) CheckChannel(n int) chan LValue {
 	v := ls.Get(n)
-	if ch, ok := v.(LChannel); ok {
+	if ch, ok := v.AsLChannel(); ok {
 		return (chan LValue)(ch)
 	}
 	ls.TypeError(n, LTChannel)
@@ -453,7 +453,7 @@ func (ls *LState) OptChannel(n int, ch chan LValue) chan LValue {
 	if v == LNil {
 		return ch
 	}
-	if ch, ok := v.(LChannel); ok {
+	if ch, ok := v.AsLChannel(); ok {
 		return (chan LValue)(ch)
 	}
 	ls.TypeError(n, LTChannel)

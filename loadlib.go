@@ -30,7 +30,7 @@ func loGetPath(env string, defpath string) string {
 func loFindFile(L *LState, name, pname string) (string, string) {
 	name = strings.Replace(name, ".", string(os.PathSeparator), -1)
 	lv := L.GetField(L.GetField(L.Get(EnvironIndex), "package"), pname)
-	path, ok := lv.(LString)
+	path, ok := lv.AsLString()
 	if !ok {
 		L.RaiseError("package.%s must be a string", pname)
 	}
@@ -49,24 +49,24 @@ func loFindFile(L *LState, name, pname string) (string, string) {
 func OpenPackage(L *LState) int {
 	packagemod := L.RegisterModule(LoadLibName, loFuncs)
 
-	L.SetField(packagemod, "preload", L.NewTable())
+	L.SetField(packagemod, "preload", L.NewTable().AsLValue())
 
 	loaders := L.CreateTable(len(loLoaders), 0)
 	for i, loader := range loLoaders {
-		L.RawSetInt(loaders, i+1, L.NewFunction(loader))
+		L.RawSetInt(loaders, i+1, L.NewFunction(loader).AsLValue())
 	}
-	L.SetField(packagemod, "loaders", loaders)
-	L.SetField(L.Get(RegistryIndex), "_LOADERS", loaders)
+	L.SetField(packagemod, "loaders", loaders.AsLValue())
+	L.SetField(L.Get(RegistryIndex), "_LOADERS", loaders.AsLValue())
 
 	loaded := L.NewTable()
-	L.SetField(packagemod, "loaded", loaded)
-	L.SetField(L.Get(RegistryIndex), "_LOADED", loaded)
+	L.SetField(packagemod, "loaded", loaded.AsLValue())
+	L.SetField(L.Get(RegistryIndex), "_LOADED", loaded.AsLValue())
 
-	L.SetField(packagemod, "path", LString(loGetPath(LuaPath, LuaPathDefault)))
-	L.SetField(packagemod, "cpath", emptyLString)
+	L.SetField(packagemod, "path", LString(loGetPath(LuaPath, LuaPathDefault)).AsLValue())
+	L.SetField(packagemod, "cpath", emptyLString.AsLValue())
 
 	L.SetField(packagemod, "config", LString(LuaDirSep+"\n"+LuaPathSep+
-		"\n"+LuaPathMark+"\n"+LuaExecDir+"\n"+LuaIgMark+"\n"))
+		"\n"+LuaPathMark+"\n"+LuaExecDir+"\n"+LuaIgMark+"\n").AsLValue())
 
 	L.Push(packagemod)
 	return 1
@@ -80,12 +80,12 @@ var loFuncs = map[string]LGFunction{
 func loLoaderPreload(L *LState) int {
 	name := L.CheckString(1)
 	preload := L.GetField(L.GetField(L.Get(EnvironIndex), "package"), "preload")
-	if _, ok := preload.(*LTable); !ok {
+	if _, ok := preload.AsLTable(); !ok {
 		L.RaiseError("package.preload must be a table")
 	}
 	lv := L.GetField(preload, name)
 	if lv == LNil {
-		L.Push(LString(fmt.Sprintf("no field package.preload['%s']", name)))
+		L.Push(LString(fmt.Sprintf("no field package.preload['%s']", name)).AsLValue())
 		return 1
 	}
 	L.Push(lv)
@@ -96,14 +96,14 @@ func loLoaderLua(L *LState) int {
 	name := L.CheckString(1)
 	path, msg := loFindFile(L, name, "path")
 	if len(path) == 0 {
-		L.Push(LString(msg))
+		L.Push(LString(msg).AsLValue())
 		return 1
 	}
 	fn, err1 := L.LoadFile(path)
 	if err1 != nil {
 		L.RaiseError(err1.Error())
 	}
-	L.Push(fn)
+	L.Push(fn.AsLValue())
 	return 1
 }
 
@@ -114,10 +114,10 @@ func loLoadLib(L *LState) int {
 
 func loSeeAll(L *LState) int {
 	mod := L.CheckTable(1)
-	mt := L.GetMetatable(mod)
+	mt := L.GetMetatable(mod.AsLValue())
 	if mt == LNil {
-		mt = L.CreateTable(0, 1)
-		L.SetMetatable(mod, mt)
+		mt = L.CreateTable(0, 1).AsLValue()
+		L.SetMetatable(mod.AsLValue(), mt)
 	}
 	L.SetField(mt, "__index", L.Get(GlobalsIndex))
 	return 0

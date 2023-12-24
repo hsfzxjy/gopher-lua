@@ -110,6 +110,7 @@ func savereg(ec *expcontext, reg int) int {
 }
 
 func raiseCompileError(context *funcContext, line int, format string, args ...interface{}) {
+	args = AnysNormalize(args)
 	msg := fmt.Sprintf(format, args...)
 	panic(&CompileError{context: context, Line: line, Message: msg})
 }
@@ -132,7 +133,7 @@ func lnumberValue(expr ast.Expr) (LNumber, bool) {
 		}
 		return lv, true
 	} else if ex, ok := expr.(*constLValueExpr); ok {
-		return ex.Value.(LNumber), true
+		return ex.Value.MustLNumber(), true
 	}
 	return 0, false
 }
@@ -695,7 +696,7 @@ func compileAssignStmtLeft(context *funcContext, stmt *ast.AssignStmt) (int, []*
 			ec := &expcontext{identtype, regNotDefined, 0}
 			switch identtype {
 			case ecGlobal:
-				context.ConstIndex(LString(st.Value))
+				context.ConstIndex(LString(st.Value).AsLValue())
 			case ecUpvalue:
 				context.Upvalues.RegisterUnique(st.Value)
 			case ecLocal:
@@ -794,7 +795,7 @@ func compileAssignStmt(context *funcContext, stmt *ast.AssignStmt) { // {{{
 				reg -= 1
 			}
 		case ecGlobal:
-			code.AddABx(OP_SETGLOBAL, reg, context.ConstIndex(LString(ex.(*ast.IdentExpr).Value)), sline(ex))
+			code.AddABx(OP_SETGLOBAL, reg, context.ConstIndex(LString(ex.(*ast.IdentExpr).Value).AsLValue()), sline(ex))
 			reg -= 1
 		case ecUpvalue:
 			code.AddABC(OP_SETUPVAL, reg, context.Upvalues.RegisterUnique(ex.(*ast.IdentExpr).Value), 0, sline(ex))
@@ -1035,7 +1036,7 @@ func compileFuncDefStmt(context *funcContext, stmt *ast.FuncDefStmt) { // {{{
 		reg := context.RegTop()
 		var treg, kreg int
 		compileExprWithKMVPropagation(context, stmt.Name.Receiver, &reg, &treg)
-		kreg = loadRk(context, &reg, stmt.Func, LString(stmt.Name.Method))
+		kreg = loadRk(context, &reg, stmt.Func, LString(stmt.Name.Method).AsLValue())
 		compileExpr(context, reg, stmt.Func, ecfuncdef)
 		context.Code.AddABC(OP_SETTABLE, treg, kreg, reg, sline(stmt.Name.Receiver))
 	} else {
@@ -1148,14 +1149,14 @@ func compileExpr(context *funcContext, reg int, expr ast.Expr, ec *expcontext) i
 
 	switch ex := expr.(type) {
 	case *ast.StringExpr:
-		code.AddABx(OP_LOADK, sreg, context.ConstIndex(LString(ex.Value)), sline(ex))
+		code.AddABx(OP_LOADK, sreg, context.ConstIndex(LString(ex.Value).AsLValue()), sline(ex))
 		return sused
 	case *ast.NumberExpr:
 		num, err := parseNumber(ex.Value)
 		if err != nil {
 			num = LNumber(math.NaN())
 		}
-		code.AddABx(OP_LOADK, sreg, context.ConstIndex(num), sline(ex))
+		code.AddABx(OP_LOADK, sreg, context.ConstIndex(num.AsLValue()), sline(ex))
 		return sused
 	case *constLValueExpr:
 		code.AddABx(OP_LOADK, sreg, context.ConstIndex(ex.Value), sline(ex))
@@ -1172,7 +1173,7 @@ func compileExpr(context *funcContext, reg int, expr ast.Expr, ec *expcontext) i
 	case *ast.IdentExpr:
 		switch getIdentRefType(context, context, ex) {
 		case ecGlobal:
-			code.AddABx(OP_GETGLOBAL, sreg, context.ConstIndex(LString(ex.Value)), sline(ex))
+			code.AddABx(OP_GETGLOBAL, sreg, context.ConstIndex(LString(ex.Value).AsLValue()), sline(ex))
 		case ecUpvalue:
 			code.AddABC(OP_GETUPVAL, sreg, context.Upvalues.RegisterUnique(ex.Value), 0, sline(ex))
 		case ecLocal:
@@ -1274,17 +1275,17 @@ func constFold(exp ast.Expr) ast.Expr { // {{{
 		if lisconst && risconst {
 			switch expr.Operator {
 			case "+":
-				return &constLValueExpr{Value: lvalue + rvalue}
+				return &constLValueExpr{Value: (lvalue + rvalue).AsLValue()}
 			case "-":
-				return &constLValueExpr{Value: lvalue - rvalue}
+				return &constLValueExpr{Value: (lvalue - rvalue).AsLValue()}
 			case "*":
-				return &constLValueExpr{Value: lvalue * rvalue}
+				return &constLValueExpr{Value: (lvalue * rvalue).AsLValue()}
 			case "/":
-				return &constLValueExpr{Value: lvalue / rvalue}
+				return &constLValueExpr{Value: (lvalue / rvalue).AsLValue()}
 			case "%":
-				return &constLValueExpr{Value: luaModulo(lvalue, rvalue)}
+				return &constLValueExpr{Value: luaModulo(lvalue, rvalue).AsLValue()}
 			case "^":
-				return &constLValueExpr{Value: LNumber(math.Pow(float64(lvalue), float64(rvalue)))}
+				return &constLValueExpr{Value: LNumber(math.Pow(float64(lvalue), float64(rvalue))).AsLValue()}
 			default:
 				panic(fmt.Sprintf("unknown binop: %v", expr.Operator))
 			}
@@ -1294,7 +1295,7 @@ func constFold(exp ast.Expr) ast.Expr { // {{{
 	case *ast.UnaryMinusOpExpr:
 		expr.Expr = constFold(expr.Expr)
 		if value, ok := lnumberValue(expr.Expr); ok {
-			return &constLValueExpr{Value: LNumber(-value)}
+			return &constLValueExpr{Value: LNumber(-value).AsLValue()}
 		}
 		return expr
 	default:
@@ -1338,7 +1339,7 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 	context.Proto.NumUpvalues = uint8(len(context.Proto.DbgUpvalues))
 	for _, clv := range context.Proto.Constants {
 		sv := ""
-		if slv, ok := clv.(LString); ok {
+		if slv, ok := clv.AsLString(); ok {
 			sv = string(slv)
 		}
 		context.Proto.stringConstants = append(context.Proto.stringConstants, sv)
@@ -1692,7 +1693,7 @@ func compileFuncCallExpr(context *funcContext, reg int, expr *ast.FuncCallExpr, 
 	} else { // hoge:method()
 		b := reg
 		compileExprWithMVPropagation(context, expr.Receiver, &reg, &b)
-		c := loadRk(context, &reg, expr, LString(expr.Method))
+		c := loadRk(context, &reg, expr, LString(expr.Method).AsLValue())
 		context.Code.AddABC(OP_SELF, funcreg, b, c, sline(expr))
 		// increments a register for an implicit "self"
 		reg = b + 1

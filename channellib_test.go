@@ -15,7 +15,7 @@ func TestChannelMake(t *testing.T) {
     ch = channel.make()
     `)
 	obj := L.GetGlobal("ch")
-	ch, ok := obj.(LChannel)
+	ch, ok := obj.AsLChannel()
 	errorIfFalse(t, ok, "channel expected")
 	errorIfNotEqual(t, 0, reflect.ValueOf(ch).Cap())
 	close(ch)
@@ -24,7 +24,7 @@ func TestChannelMake(t *testing.T) {
     ch = channel.make(10)
     `)
 	obj = L.GetGlobal("ch")
-	ch, _ = obj.(LChannel)
+	ch, _ = obj.AsLChannel()
 	errorIfNotEqual(t, 10, reflect.ValueOf(ch).Cap())
 	close(ch)
 }
@@ -48,8 +48,8 @@ func TestChannelSelect1(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
-		L.SetGlobal("quit", LChannel(quit))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
+		L.SetGlobal("quit", LChannel(quit).AsLValue())
 		if err := L.DoString(`
     buf = ""
     local exit = false
@@ -78,16 +78,16 @@ func TestChannelSelect1(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
-		L.SetGlobal("quit", LChannel(quit))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
+		L.SetGlobal("quit", LChannel(quit).AsLValue())
 		if err := L.DoString(`
     ch:send("1")
     ch:send("2")
   `); err != nil {
 			panic(err)
 		}
-		ch <- LString("3")
-		quit <- LTrue
+		ch <- LString("3").AsLValue()
+		quit <- LTrue.AsLValue()
 		time.Sleep(1 * time.Second)
 		close(ch)
 	}
@@ -98,7 +98,7 @@ func TestChannelSelect1(t *testing.T) {
 	go receiver(ch, quit)
 	go sender(ch, quit)
 	wg.Wait()
-	lstr, ok := result.(LString)
+	lstr, ok := result.AsLString()
 	errorIfFalse(t, ok, "must be string")
 	str := string(lstr)
 	errorIfNotEqual(t, "received:1received:2received:3quitchannel closed", str)
@@ -111,8 +111,8 @@ func TestChannelSelect2(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
-		L.SetGlobal("quit", LChannel(quit))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
+		L.SetGlobal("quit", LChannel(quit).AsLValue())
 		errorIfScriptFail(t, L, `
            idx, rcv, ok = channel.select(
                {"|<-", ch},
@@ -135,8 +135,8 @@ func TestChannelSelect2(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
-		L.SetGlobal("quit", LChannel(quit))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
+		L.SetGlobal("quit", LChannel(quit).AsLValue())
 		errorIfScriptFail(t, L, `ch:send("1")`)
 		errorIfScriptFail(t, L, `ch:close()`)
 	}
@@ -155,7 +155,7 @@ func TestChannelSelect3(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
 		errorIfScriptFail(t, L, `
            ok = true
            while ok do
@@ -170,7 +170,7 @@ func TestChannelSelect3(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
 		errorIfScriptFail(t, L, `
            ok = false
            channel.select(
@@ -201,7 +201,7 @@ func TestChannelSelect4(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
 		errorIfScriptFail(t, L, `
            idx, rcv, ok = channel.select(
                  {"|<-", ch},
@@ -232,7 +232,7 @@ func TestChannelSendReceive1(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
 		errorIfScriptFail(t, L, `
           local ok, v = ch:receive()
           assert(ok)
@@ -249,7 +249,7 @@ func TestChannelSendReceive1(t *testing.T) {
 		defer wg.Done()
 		L := NewState()
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(ch))
+		L.SetGlobal("ch", LChannel(ch).AsLValue())
 		errorIfScriptFail(t, L, `ch:send("1")`)
 		errorIfScriptNotFail(t, L, `ch:send(function() end)`, "can not send a function")
 		errorIfScriptFail(t, L, `ch:close()`)
@@ -269,7 +269,7 @@ func TestCancelChannelReceive(t *testing.T) {
 		L := NewState()
 		L.SetContext(ctx)
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(make(chan LValue)))
+		L.SetGlobal("ch", LChannel(make(chan LValue)).AsLValue())
 		errorIfScriptNotFail(t, L, `ch:receive()`, context.Canceled.Error())
 	}()
 	time.Sleep(time.Second)
@@ -285,7 +285,7 @@ func TestCancelChannelReceive2(t *testing.T) {
 		L := NewState()
 		L.SetContext(ctx)
 		defer L.Close()
-		L.SetGlobal("ch", LChannel(make(chan LValue)))
+		L.SetGlobal("ch", LChannel(make(chan LValue)).AsLValue())
 		errorIfScriptNotFail(t, L, `channel.select({"|<-", ch})`, context.Canceled.Error())
 	}()
 	time.Sleep(time.Second)

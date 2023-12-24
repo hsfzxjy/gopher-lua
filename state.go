@@ -39,11 +39,11 @@ func newApiError(code ApiErrorType, object LValue) *ApiError {
 }
 
 func newApiErrorS(code ApiErrorType, message string) *ApiError {
-	return newApiError(code, LString(message))
+	return newApiError(code, LString(message).AsLValue())
 }
 
 func newApiErrorE(code ApiErrorType, err error) *ApiError {
-	return &ApiError{code, LString(err.Error()), "", err}
+	return &ApiError{code, LString(err.Error()).AsLValue(), "", err}
 }
 
 func (e *ApiError) Error() string {
@@ -422,7 +422,7 @@ func (rg *registry) SetTop(topi int) { // +inline-start
 	if rg.top < oldtopi {
 		nilRange := rg.array[rg.top:oldtopi]
 		for i := range nilRange {
-			nilRange[i] = nil
+			nilRange[i] = LValue{}
 		}
 	}
 	//for i := rg.top; i < oldtop; i++ {
@@ -497,7 +497,7 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	if rg.top < oldtop {
 		nilRange := rg.array[rg.top:oldtop]
 		for i := range nilRange {
-			nilRange[i] = nil
+			nilRange[i] = LValue{}
 		}
 	}
 } // +inline-end
@@ -523,7 +523,7 @@ func (rg *registry) FillNil(regm, n int) { // +inline-start
 	if rg.top < oldtop {
 		nilRange := rg.array[rg.top:oldtop]
 		for i := range nilRange {
-			nilRange[i] = nil
+			nilRange[i] = LValue{}
 		}
 	}
 } // +inline-end
@@ -545,7 +545,7 @@ func (rg *registry) Insert(value LValue, reg int) {
 					rg.resize(requiredSize)
 				}
 			}
-			rg.array[regi] = vali
+			rg.array[regi] = vali.AsLValue()
 			if regi >= rg.top {
 				rg.top = regi + 1
 			}
@@ -569,7 +569,7 @@ func (rg *registry) Insert(value LValue, reg int) {
 					rg.resize(requiredSize)
 				}
 			}
-			rg.array[regi] = vali
+			rg.array[regi] = vali.AsLValue()
 			if regi >= rg.top {
 				rg.top = regi + 1
 			}
@@ -589,7 +589,7 @@ func (rg *registry) Insert(value LValue, reg int) {
 				rg.resize(requiredSize)
 			}
 		}
-		rg.array[regi] = vali
+		rg.array[regi] = vali.AsLValue()
 		if regi >= rg.top {
 			rg.top = regi + 1
 		}
@@ -606,7 +606,7 @@ func (rg *registry) Set(regi int, vali LValue) { // +inline-start
 			rg.resize(requiredSize)
 		}
 	}
-	rg.array[regi] = vali
+	rg.array[regi] = vali.AsLValue()
 	if regi >= rg.top {
 		rg.top = regi + 1
 	}
@@ -737,6 +737,7 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 		ls.closeAllUpvalues()
 	}
 	message := format
+	args = AnysNormalize(args)
 	if len(args) > 0 {
 		message = fmt.Sprintf(format, args...)
 	}
@@ -747,7 +748,7 @@ func (ls *LState) raiseError(level int, format string, args ...interface{}) {
 		// if the registry is full then it won't be possible to push a value, in this case, force a larger size
 		ls.reg.forceResize(ls.reg.Top() + 1)
 	}
-	ls.reg.Push(LString(message))
+	ls.reg.Push(LString(message).AsLValue())
 	ls.Panic(ls)
 }
 
@@ -925,7 +926,7 @@ func (ls *LState) rkString(idx int) string {
 	if (idx & opBitRk) != 0 {
 		return ls.currentFrame.Fn.Proto.stringConstants[idx & ^opBitRk]
 	}
-	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].(LString))
+	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].MustLString())
 }
 
 func (ls *LState) closeUpvalues(idx int) { // +inline-start
@@ -974,11 +975,11 @@ func (ls *LState) findUpvalue(idx int) *Upvalue {
 
 func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 	var metatable LValue = LNil
-	switch obj := lvalue.(type) {
-	case *LTable:
-		metatable = obj.Metatable
-	case *LUserData:
-		metatable = obj.Metatable
+	switch obj := lvalue; obj.Type() {
+	case LTTable:
+		metatable = obj.MustLTable().Metatable
+	case LTUserData:
+		metatable = obj.MustLUserData().Metatable
 	default:
 		if table, ok := ls.G.builtinMts[int(obj.Type())]; ok {
 			metatable = table
@@ -987,7 +988,7 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 
 	if !rawget && metatable != LNil {
 		oldmt := metatable
-		if tb, ok := metatable.(*LTable); ok {
+		if tb, ok := metatable.AsLTable(); ok {
 			metatable = tb.RawGetString("__metatable")
 			if metatable == LNil {
 				metatable = oldmt
@@ -1000,7 +1001,7 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 
 func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 	if mt := ls.metatable(lvalue, true); mt != LNil {
-		if tb, ok := mt.(*LTable); ok {
+		if tb, ok := mt.AsLTable(); ok {
 			return tb.RawGetString(event)
 		}
 	}
@@ -1009,14 +1010,14 @@ func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 
 func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
 	if mt := ls.metatable(value1, true); mt != LNil {
-		if tb, ok := mt.(*LTable); ok {
+		if tb, ok := mt.AsLTable(); ok {
 			if ret := tb.RawGetString(event); ret != LNil {
 				return ret
 			}
 		}
 	}
 	if mt := ls.metatable(value2, true); mt != LNil {
-		if tb, ok := mt.(*LTable); ok {
+		if tb, ok := mt.AsLTable(); ok {
 			return tb.RawGetString(event)
 		}
 	}
@@ -1024,10 +1025,10 @@ func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
 }
 
 func (ls *LState) metaCall(lvalue LValue) (*LFunction, bool) {
-	if fn, ok := lvalue.(*LFunction); ok {
+	if fn, ok := lvalue.AsLFunction(); ok {
 		return fn, false
 	}
-	if fn, ok := ls.metaOp1(lvalue, "__call").(*LFunction); ok {
+	if fn, ok := ls.metaOp1(lvalue, "__call").AsLFunction(); ok {
 		return fn, true
 	}
 	return nil, false
@@ -1115,9 +1116,9 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 					for i := 0; i < nvarargs; i++ {
 						argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
 					}
-					argtb.RawSetString("n", LNumber(nvarargs))
+					argtb.RawSetString("n", LNumber(nvarargs).AsLValue())
 					//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
-					ls.reg.array[cf.LocalBase+nargs+np] = argtb
+					ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 				} else {
 					ls.reg.array[cf.LocalBase+nargs+np] = LNil
 				}
@@ -1227,9 +1228,9 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 						for i := 0; i < nvarargs; i++ {
 							argtb.RawSetInt(i+1, ls.reg.Get(cf.LocalBase+np+i))
 						}
-						argtb.RawSetString("n", LNumber(nvarargs))
+						argtb.RawSetString("n", LNumber(nvarargs).AsLValue())
 						//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
-						ls.reg.array[cf.LocalBase+nargs+np] = argtb
+						ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 					} else {
 						ls.reg.array[cf.LocalBase+nargs+np] = LNil
 					}
@@ -1276,7 +1277,7 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 func (ls *LState) getField(obj LValue, key LValue) LValue {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.(*LTable)
+		tb, istable := curobj.AsLTable()
 		if istable {
 			ret := tb.RawGet(key)
 			if ret != LNil {
@@ -1301,13 +1302,13 @@ func (ls *LState) getField(obj LValue, key LValue) LValue {
 		}
 	}
 	ls.RaiseError("too many recursions in gettable")
-	return nil
+	return LValue{}
 }
 
 func (ls *LState) getFieldString(obj LValue, key string) LValue {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.(*LTable)
+		tb, istable := curobj.AsLTable()
 		if istable {
 			ret := tb.RawGetString(key)
 			if ret != LNil {
@@ -1324,7 +1325,7 @@ func (ls *LState) getFieldString(obj LValue, key string) LValue {
 		if metaindex.Type() == LTFunction {
 			ls.reg.Push(metaindex)
 			ls.reg.Push(curobj)
-			ls.reg.Push(LString(key))
+			ls.reg.Push(LString(key).AsLValue())
 			ls.Call(2, 1)
 			return ls.reg.Pop()
 		} else {
@@ -1332,13 +1333,13 @@ func (ls *LState) getFieldString(obj LValue, key string) LValue {
 		}
 	}
 	ls.RaiseError("too many recursions in gettable")
-	return nil
+	return LValue{}
 }
 
 func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.(*LTable)
+		tb, istable := curobj.AsLTable()
 		if istable {
 			if tb.RawGet(key) != LNil {
 				ls.RawSet(tb, key, value)
@@ -1370,7 +1371,7 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.(*LTable)
+		tb, istable := curobj.AsLTable()
 		if istable {
 			if tb.RawGetString(key) != LNil {
 				tb.RawSetString(key, value)
@@ -1388,7 +1389,7 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 		if metaindex.Type() == LTFunction {
 			ls.reg.Push(metaindex)
 			ls.reg.Push(curobj)
-			ls.reg.Push(LString(key))
+			ls.reg.Push(LString(key).AsLValue())
 			ls.reg.Push(value)
 			ls.Call(3, 0)
 			return
@@ -1480,7 +1481,7 @@ func (ls *LState) Replace(idx int, value LValue) {
 	} else {
 		switch idx {
 		case RegistryIndex:
-			if tb, ok := value.(*LTable); ok {
+			if tb, ok := value.AsLTable(); ok {
 				ls.G.Registry = tb
 			} else {
 				ls.RaiseError("registry must be a table(%v)", value.Type().String())
@@ -1489,13 +1490,13 @@ func (ls *LState) Replace(idx int, value LValue) {
 			if ls.currentFrame == nil {
 				ls.RaiseError("no calling environment")
 			}
-			if tb, ok := value.(*LTable); ok {
+			if tb, ok := value.AsLTable(); ok {
 				ls.currentFrame.Fn.Env = tb
 			} else {
 				ls.RaiseError("environment must be a table(%v)", value.Type().String())
 			}
 		case GlobalsIndex:
-			if tb, ok := value.(*LTable); ok {
+			if tb, ok := value.AsLTable(); ok {
 				ls.G.Global = tb
 			} else {
 				ls.RaiseError("_G must be a table(%v)", value.Type().String())
@@ -1529,14 +1530,14 @@ func (ls *LState) Get(idx int) LValue {
 	} else {
 		switch idx {
 		case RegistryIndex:
-			return ls.G.Registry
+			return ls.G.Registry.AsLValue()
 		case EnvironIndex:
 			if ls.currentFrame == nil {
-				return ls.Env
+				return ls.Env.AsLValue()
 			}
-			return ls.currentFrame.Fn.Env
+			return ls.currentFrame.Fn.Env.AsLValue()
 		case GlobalsIndex:
-			return ls.G.Global
+			return ls.G.Global.AsLValue()
 		default:
 			fn := ls.currentFrame.Fn
 			index := GlobalsIndex - idx - 1
@@ -1658,10 +1659,10 @@ func (ls *LState) ToBool(n int) bool {
 }
 
 func (ls *LState) ToInt(n int) int {
-	if lv, ok := ls.Get(n).(LNumber); ok {
+	if lv, ok := ls.Get(n).AsLNumber(); ok {
 		return int(lv)
 	}
-	if lv, ok := ls.Get(n).(LString); ok {
+	if lv, ok := ls.Get(n).AsLString(); ok {
 		if num, err := parseNumber(string(lv)); err == nil {
 			return int(num)
 		}
@@ -1670,10 +1671,10 @@ func (ls *LState) ToInt(n int) int {
 }
 
 func (ls *LState) ToInt64(n int) int64 {
-	if lv, ok := ls.Get(n).(LNumber); ok {
+	if lv, ok := ls.Get(n).AsLNumber(); ok {
 		return int64(lv)
 	}
-	if lv, ok := ls.Get(n).(LString); ok {
+	if lv, ok := ls.Get(n).AsLString(); ok {
 		if num, err := parseNumber(string(lv)); err == nil {
 			return int64(num)
 		}
@@ -1690,28 +1691,28 @@ func (ls *LState) ToString(n int) string {
 }
 
 func (ls *LState) ToTable(n int) *LTable {
-	if lv, ok := ls.Get(n).(*LTable); ok {
+	if lv, ok := ls.Get(n).AsLTable(); ok {
 		return lv
 	}
 	return nil
 }
 
 func (ls *LState) ToFunction(n int) *LFunction {
-	if lv, ok := ls.Get(n).(*LFunction); ok {
+	if lv, ok := ls.Get(n).AsLFunction(); ok {
 		return lv
 	}
 	return nil
 }
 
 func (ls *LState) ToUserData(n int) *LUserData {
-	if lv, ok := ls.Get(n).(*LUserData); ok {
+	if lv, ok := ls.Get(n).AsLUserData(); ok {
 		return lv
 	}
 	return nil
 }
 
 func (ls *LState) ToThread(n int) *LState {
-	if lv, ok := ls.Get(n).(*LState); ok {
+	if lv, ok := ls.Get(n).AsLState(); ok {
 		return lv
 	}
 	return nil
@@ -1732,7 +1733,7 @@ func (ls *LState) RaiseError(format string, args ...interface{}) {
 
 // This function is equivalent to lua_error( http://www.lua.org/manual/5.1/manual.html#lua_error ).
 func (ls *LState) Error(lv LValue, level int) {
-	if str, ok := lv.(LString); ok {
+	if str, ok := lv.AsLString(); ok {
 		ls.raiseError(level, string(str))
 	} else {
 		if !ls.hasErrorFunc {
@@ -1745,11 +1746,11 @@ func (ls *LState) Error(lv LValue, level int) {
 
 func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 	if !strings.HasPrefix(what, ">") {
-		fn = dbg.frame.Fn
+		fn = dbg.frame.Fn.AsLValue()
 	} else {
 		what = what[1:]
 	}
-	f, ok := fn.(*LFunction)
+	f, ok := fn.AsLFunction()
 	if !ok {
 		return LNil, newApiErrorS(ApiErrorRun, "can not get debug info(an object in not a function)")
 	}
@@ -1794,7 +1795,7 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 	}
 
 	if retfn {
-		return f, nil
+		return f.AsLValue(), nil
 	}
 	return LNil, nil
 
@@ -1864,30 +1865,30 @@ func (ls *LState) SetUpvalue(fn *LFunction, no int, lv LValue) string {
 /* env operations {{{ */
 
 func (ls *LState) GetFEnv(obj LValue) LValue {
-	switch lv := obj.(type) {
-	case *LFunction:
-		return lv.Env
-	case *LUserData:
-		return lv.Env
-	case *LState:
-		return lv.Env
+	switch lv := obj; lv.Type() {
+	case LTFunction:
+		return lv.MustLFunction().Env.AsLValue()
+	case LTUserData:
+		return lv.MustLUserData().Env.AsLValue()
+	case LTThread:
+		return lv.MustLState().Env.AsLValue()
 	}
 	return LNil
 }
 
 func (ls *LState) SetFEnv(obj LValue, env LValue) {
-	tb, ok := env.(*LTable)
+	tb, ok := env.AsLTable()
 	if !ok {
 		ls.RaiseError("cannot use %v as an environment", env.Type().String())
 	}
 
-	switch lv := obj.(type) {
-	case *LFunction:
-		lv.Env = tb
-	case *LUserData:
-		lv.Env = tb
-	case *LState:
-		lv.Env = tb
+	switch lv := obj; lv.Type() {
+	case LTFunction:
+		lv.MustLFunction().Env = tb
+	case LTUserData:
+		lv.MustLUserData().Env = tb
+	case LTThread:
+		lv.MustLThread().Env = tb
 	}
 	/* do nothing */
 }
@@ -1913,7 +1914,7 @@ func (ls *LState) GetTable(obj LValue, key LValue) LValue {
 }
 
 func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
-	if n, ok := key.(LNumber); ok && math.IsNaN(float64(n)) {
+	if n, ok := key.AsLNumber(); ok && math.IsNaN(float64(n)) {
 		ls.RaiseError("table index is NaN")
 	} else if key == LNil {
 		ls.RaiseError("table index is nil")
@@ -1955,7 +1956,7 @@ func (ls *LState) Next(tb *LTable, key LValue) (LValue, LValue) {
 
 func (ls *LState) ObjLen(v1 LValue) int {
 	if v1.Type() == LTString {
-		return len(string(v1.(LString)))
+		return len(string(v1.MustLString()))
 	}
 	op := ls.metaOp1(v1, "__len")
 	if op.Type() == LTFunction {
@@ -1964,10 +1965,10 @@ func (ls *LState) ObjLen(v1 LValue) int {
 		ls.Call(1, 1)
 		ret := ls.reg.Pop()
 		if ret.Type() == LTNumber {
-			return int(ret.(LNumber))
+			return int(ret.MustLNumber())
 		}
 	} else if v1.Type() == LTTable {
-		return v1.(*LTable).Len()
+		return v1.MustLTable().Len()
 	}
 	return 0
 }
@@ -2003,7 +2004,7 @@ func (ls *LState) RawEqual(lhs, rhs LValue) bool {
 /* register operations {{{ */
 
 func (ls *LState) Register(name string, fn LGFunction) {
-	ls.SetGlobal(name, ls.NewFunction(fn))
+	ls.SetGlobal(name, ls.NewFunction(fn).AsLValue())
 }
 
 /* }}} */
@@ -2051,7 +2052,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 				err = rcv.(*ApiError)
 			}
 			if errfunc != nil {
-				ls.Push(errfunc)
+				ls.Push(errfunc.AsLValue())
 				ls.Push(err.(*ApiError).Object)
 				ls.Panic = panicWithoutTraceback
 				defer func() {
@@ -2095,7 +2096,7 @@ func (ls *LState) PCall(nargs, nret int, errfunc *LFunction) (err error) {
 }
 
 func (ls *LState) GPCall(fn LGFunction, data LValue) error {
-	ls.Push(newLFunctionG(fn, ls.currentEnv(), 0))
+	ls.Push(newLFunctionG(fn, ls.currentEnv(), 0).AsLValue())
 	ls.Push(data)
 	return ls.PCall(1, MultRet, nil)
 }
@@ -2122,17 +2123,17 @@ func (ls *LState) GetMetatable(obj LValue) LValue {
 }
 
 func (ls *LState) SetMetatable(obj LValue, mt LValue) {
-	switch mt.(type) {
-	case *LNilType, *LTable:
+	switch mt.Type() {
+	case LTNil, LTTable:
 	default:
 		ls.RaiseError("metatable must be a table or nil, but got %v", mt.Type().String())
 	}
 
-	switch v := obj.(type) {
-	case *LTable:
-		v.Metatable = mt
-	case *LUserData:
-		v.Metatable = mt
+	switch v := obj; v.Type() {
+	case LTTable:
+		v.MustLTable().Metatable = mt
+	case LTUserData:
+		v.MustLUserData().Metatable = mt
 	default:
 		ls.G.builtinMts[int(obj.Type())] = mt
 	}
@@ -2249,7 +2250,8 @@ func (ls *LState) SetMx(mx int) {
 		for atomic.LoadInt32(&ls.stop) == 0 {
 			runtime.ReadMemStats(&s)
 			if s.Alloc >= limit {
-				fmt.Println("out of memory")
+				fmt.Println("out of memory", s.Alloc, limit, mx)
+				println(ls.stackTrace(0))
 				os.Exit(3)
 			}
 			time.Sleep(100 * time.Millisecond)
@@ -2278,7 +2280,7 @@ func (ls *LState) RemoveContext() context.Context {
 
 // Converts the Lua value at the given acceptable index to the chan LValue.
 func (ls *LState) ToChannel(n int) chan LValue {
-	if lv, ok := ls.Get(n).(LChannel); ok {
+	if lv, ok := ls.Get(n).AsLChannel(); ok {
 		return (chan LValue)(lv)
 	}
 	return nil

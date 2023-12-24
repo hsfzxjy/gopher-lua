@@ -47,8 +47,8 @@ func (ls *LState) OpenLibs() {
 	// NB: Map iteration order in Go is deliberately randomised, so must open Load/Base
 	// prior to iterating.
 	for _, lib := range luaLibs {
-		ls.Push(ls.NewFunction(lib.libFunc))
-		ls.Push(LString(lib.libName))
+		ls.Push(ls.NewFunction(lib.libFunc).AsLValue())
+		ls.Push(LString(lib.libName).AsLValue())
 		ls.Call(1, 0)
 	}
 }

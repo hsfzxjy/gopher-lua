@@ -79,19 +79,19 @@ func TestSkipOpenLibs(t *testing.T) {
 func TestGetAndReplace(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LString("a"))
-	L.Replace(1, LString("b"))
-	L.Replace(0, LString("c"))
+	L.Push(LString("a").AsLValue())
+	L.Replace(1, LString("b").AsLValue())
+	L.Replace(0, LString("c").AsLValue())
 	errorIfNotEqual(t, LNil, L.Get(0))
 	errorIfNotEqual(t, LNil, L.Get(-10))
 	errorIfNotEqual(t, L.Env, L.Get(EnvironIndex))
 	errorIfNotEqual(t, LString("b"), L.Get(1))
-	L.Push(LString("c"))
-	L.Push(LString("d"))
-	L.Replace(-2, LString("e"))
+	L.Push(LString("c").AsLValue())
+	L.Push(LString("d").AsLValue())
+	L.Replace(-2, LString("e").AsLValue())
 	errorIfNotEqual(t, LString("e"), L.Get(-2))
 	registry := L.NewTable()
-	L.Replace(RegistryIndex, registry)
+	L.Replace(RegistryIndex, registry.AsLValue())
 	L.G.Registry = registry
 	errorIfGFuncNotFail(t, L, func(L *LState) int {
 		L.Replace(RegistryIndex, LNil)
@@ -99,7 +99,7 @@ func TestGetAndReplace(t *testing.T) {
 	}, "registry must be a table")
 	errorIfGFuncFail(t, L, func(L *LState) int {
 		env := L.NewTable()
-		L.Replace(EnvironIndex, env)
+		L.Replace(EnvironIndex, env.AsLValue())
 		errorIfNotEqual(t, env, L.Get(EnvironIndex))
 		return 0
 	})
@@ -109,7 +109,7 @@ func TestGetAndReplace(t *testing.T) {
 	}, "environment must be a table")
 	errorIfGFuncFail(t, L, func(L *LState) int {
 		gbl := L.NewTable()
-		L.Replace(GlobalsIndex, gbl)
+		L.Replace(GlobalsIndex, gbl.AsLValue())
 		errorIfNotEqual(t, gbl, L.G.Global)
 		return 0
 	})
@@ -121,20 +121,20 @@ func TestGetAndReplace(t *testing.T) {
 	L2 := NewState()
 	defer L2.Close()
 	clo := L2.NewClosure(func(L2 *LState) int {
-		L2.Replace(UpvalueIndex(1), LNumber(3))
+		L2.Replace(UpvalueIndex(1), LNumber(3).AsLValue())
 		errorIfNotEqual(t, LNumber(3), L2.Get(UpvalueIndex(1)))
 		return 0
-	}, LNumber(1), LNumber(2))
-	L2.SetGlobal("clo", clo)
+	}, LNumber(1).AsLValue(), LNumber(2).AsLValue())
+	L2.SetGlobal("clo", clo.AsLValue())
 	errorIfScriptFail(t, L2, `clo()`)
 }
 
 func TestRemove(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LString("a"))
-	L.Push(LString("b"))
-	L.Push(LString("c"))
+	L.Push(LString("a").AsLValue())
+	L.Push(LString("b").AsLValue())
+	L.Push(LString("c").AsLValue())
 
 	L.Remove(4)
 	errorIfNotEqual(t, LString("a"), L.Get(1))
@@ -147,7 +147,7 @@ func TestRemove(t *testing.T) {
 	errorIfNotEqual(t, LString("b"), L.Get(2))
 	errorIfNotEqual(t, LNil, L.Get(3))
 	errorIfNotEqual(t, 2, L.GetTop())
-	L.Push(LString("c"))
+	L.Push(LString("c").AsLValue())
 
 	L.Remove(-10)
 	errorIfNotEqual(t, LString("a"), L.Get(1))
@@ -165,9 +165,9 @@ func TestRemove(t *testing.T) {
 func TestToInt(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewTable())
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewTable().AsLValue())
 	errorIfNotEqual(t, 10, L.ToInt(1))
 	errorIfNotEqual(t, 99, L.ToInt(2))
 	errorIfNotEqual(t, 0, L.ToInt(3))
@@ -176,9 +176,9 @@ func TestToInt(t *testing.T) {
 func TestToInt64(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewTable())
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewTable().AsLValue())
 	errorIfNotEqual(t, int64(10), L.ToInt64(1))
 	errorIfNotEqual(t, int64(99), L.ToInt64(2))
 	errorIfNotEqual(t, int64(0), L.ToInt64(3))
@@ -187,9 +187,9 @@ func TestToInt64(t *testing.T) {
 func TestToNumber(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewTable())
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewTable().AsLValue())
 	errorIfNotEqual(t, LNumber(10), L.ToNumber(1))
 	errorIfNotEqual(t, LNumber(99.9), L.ToNumber(2))
 	errorIfNotEqual(t, LNumber(0), L.ToNumber(3))
@@ -198,9 +198,9 @@ func TestToNumber(t *testing.T) {
 func TestToString(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewTable())
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewTable().AsLValue())
 	errorIfNotEqual(t, "10", L.ToString(1))
 	errorIfNotEqual(t, "99.9", L.ToString(2))
 	errorIfNotEqual(t, "", L.ToString(3))
@@ -209,9 +209,9 @@ func TestToString(t *testing.T) {
 func TestToTable(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewTable())
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewTable().AsLValue())
 	errorIfFalse(t, L.ToTable(1) == nil, "index 1 must be nil")
 	errorIfFalse(t, L.ToTable(2) == nil, "index 2 must be nil")
 	errorIfNotEqual(t, L.Get(3), L.ToTable(3))
@@ -220,9 +220,9 @@ func TestToTable(t *testing.T) {
 func TestToFunction(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewFunction(func(L *LState) int { return 0 }))
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewFunction(func(L *LState) int { return 0 }).AsLValue())
 	errorIfFalse(t, L.ToFunction(1) == nil, "index 1 must be nil")
 	errorIfFalse(t, L.ToFunction(2) == nil, "index 2 must be nil")
 	errorIfNotEqual(t, L.Get(3), L.ToFunction(3))
@@ -231,9 +231,9 @@ func TestToFunction(t *testing.T) {
 func TestToUserData(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
-	L.Push(L.NewUserData())
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
+	L.Push(L.NewUserData().AsLValue())
 	errorIfFalse(t, L.ToUserData(1) == nil, "index 1 must be nil")
 	errorIfFalse(t, L.ToUserData(2) == nil, "index 2 must be nil")
 	errorIfNotEqual(t, L.Get(3), L.ToUserData(3))
@@ -242,10 +242,10 @@ func TestToUserData(t *testing.T) {
 func TestToChannel(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	L.Push(LNumber(10))
-	L.Push(LString("99.9"))
+	L.Push(LNumber(10).AsLValue())
+	L.Push(LString("99.9").AsLValue())
 	var ch chan LValue
-	L.Push(LChannel(ch))
+	L.Push(LChannel(ch).AsLValue())
 	errorIfFalse(t, L.ToChannel(1) == nil, "index 1 must be nil")
 	errorIfFalse(t, L.ToChannel(2) == nil, "index 2 must be nil")
 	errorIfNotEqual(t, ch, L.ToChannel(3))
@@ -254,26 +254,26 @@ func TestToChannel(t *testing.T) {
 func TestObjLen(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	errorIfNotEqual(t, 3, L.ObjLen(LString("abc")))
+	errorIfNotEqual(t, 3, L.ObjLen(LString("abc").AsLValue()))
 	tbl := L.NewTable()
-	tbl.Append(LTrue)
-	tbl.Append(LTrue)
-	errorIfNotEqual(t, 2, L.ObjLen(tbl))
+	tbl.Append(LTrue.AsLValue())
+	tbl.Append(LTrue.AsLValue())
+	errorIfNotEqual(t, 2, L.ObjLen(tbl.AsLValue()))
 	mt := L.NewTable()
-	L.SetField(mt, "__len", L.NewFunction(func(L *LState) int {
+	L.SetField(mt.AsLValue(), "__len", L.NewFunction(func(L *LState) int {
 		tbl := L.CheckTable(1)
-		L.Push(LNumber(tbl.Len() + 1))
+		L.Push(LNumber(tbl.Len() + 1).AsLValue())
 		return 1
-	}))
-	L.SetMetatable(tbl, mt)
-	errorIfNotEqual(t, 3, L.ObjLen(tbl))
-	errorIfNotEqual(t, 0, L.ObjLen(LNumber(10)))
+	}).AsLValue())
+	L.SetMetatable(tbl.AsLValue(), mt.AsLValue())
+	errorIfNotEqual(t, 3, L.ObjLen(tbl.AsLValue()))
+	errorIfNotEqual(t, 0, L.ObjLen(LNumber(10).AsLValue()))
 }
 
 func TestConcat(t *testing.T) {
 	L := NewState()
 	defer L.Close()
-	errorIfNotEqual(t, "a1c", L.Concat(LString("a"), LNumber(1), LString("c")))
+	errorIfNotEqual(t, "a1c", L.Concat(LString("a").AsLValue(), LNumber(1).AsLValue(), LString("c").AsLValue()))
 }
 
 func TestPCall(t *testing.T) {
@@ -286,7 +286,7 @@ func TestPCall(t *testing.T) {
 	errorIfScriptNotFail(t, L, `f1()`, "panic!")
 	L.Push(L.GetGlobal("f1"))
 	err := L.PCall(0, 0, L.NewFunction(func(L *LState) int {
-		L.Push(LString("by handler"))
+		L.Push(LString("by handler").AsLValue())
 		return 1
 	}))
 	errorIfFalse(t, strings.Contains(err.Error(), "by handler"), "")
@@ -340,29 +340,29 @@ func TestCoroutineApi1(t *testing.T) {
         return 5
       end
     `)
-	fn := L.GetGlobal("coro").(*LFunction)
-	st, err, values := L.Resume(co, fn, LNumber(10))
+	fn := L.GetGlobal("coro").MustLFunction()
+	st, err, values := L.Resume(co, fn, LNumber(10).AsLValue())
 	errorIfNotEqual(t, ResumeYield, st)
 	errorIfNotNil(t, err)
 	errorIfNotEqual(t, 3, len(values))
-	errorIfNotEqual(t, LNumber(1), values[0].(LNumber))
-	errorIfNotEqual(t, LNumber(2), values[1].(LNumber))
-	errorIfNotEqual(t, LNumber(3), values[2].(LNumber))
+	errorIfNotEqual(t, LNumber(1), values[0].MustLNumber())
+	errorIfNotEqual(t, LNumber(2), values[1].MustLNumber())
+	errorIfNotEqual(t, LNumber(3), values[2].MustLNumber())
 
-	st, err, values = L.Resume(co, fn, LNumber(11), LNumber(12))
+	st, err, values = L.Resume(co, fn, LNumber(11).AsLValue(), LNumber(12).AsLValue())
 	errorIfNotEqual(t, ResumeYield, st)
 	errorIfNotNil(t, err)
 	errorIfNotEqual(t, 1, len(values))
-	errorIfNotEqual(t, LNumber(4), values[0].(LNumber))
+	errorIfNotEqual(t, LNumber(4), values[0].MustLNumber())
 
 	st, err, values = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeOK, st)
 	errorIfNotNil(t, err)
 	errorIfNotEqual(t, 1, len(values))
-	errorIfNotEqual(t, LNumber(5), values[0].(LNumber))
+	errorIfNotEqual(t, LNumber(5), values[0].MustLNumber())
 
 	L.Register("myyield", func(L *LState) int {
-		return L.Yield(L.ToNumber(1))
+		return L.Yield(L.ToNumber(1).AsLValue())
 	})
 	errorIfScriptFail(t, L, `
       function coro_error()
@@ -371,21 +371,21 @@ func TestCoroutineApi1(t *testing.T) {
         assert(false, "--failed--")
       end
     `)
-	fn = L.GetGlobal("coro_error").(*LFunction)
+	fn = L.GetGlobal("coro_error").MustLFunction()
 	co, _ = L.NewThread()
 	st, err, values = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeYield, st)
 	errorIfNotNil(t, err)
 	errorIfNotEqual(t, 3, len(values))
-	errorIfNotEqual(t, LNumber(1), values[0].(LNumber))
-	errorIfNotEqual(t, LNumber(2), values[1].(LNumber))
-	errorIfNotEqual(t, LNumber(3), values[2].(LNumber))
+	errorIfNotEqual(t, LNumber(1), values[0].MustLNumber())
+	errorIfNotEqual(t, LNumber(2), values[1].MustLNumber())
+	errorIfNotEqual(t, LNumber(3), values[2].MustLNumber())
 
 	st, err, values = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeYield, st)
 	errorIfNotNil(t, err)
 	errorIfNotEqual(t, 1, len(values))
-	errorIfNotEqual(t, LNumber(4), values[0].(LNumber))
+	errorIfNotEqual(t, LNumber(4), values[0].MustLNumber())
 
 	st, err, values = L.Resume(co, fn)
 	errorIfNotEqual(t, ResumeError, st)
@@ -462,7 +462,7 @@ func TestContextWithCroutine(t *testing.T) {
 	`)
 	co, cocancel := L.NewThread()
 	defer cocancel()
-	fn := L.GetGlobal("coro").(*LFunction)
+	fn := L.GetGlobal("coro").MustLFunction()
 	_, err, values := L.Resume(co, fn)
 	errorIfNotNil(t, err)
 	errorIfNotEqual(t, LNumber(0), values[0])
@@ -482,14 +482,14 @@ func TestPCallAfterFail(t *testing.T) {
 		return 0
 	})
 	changeError := L.NewFunction(func(L *LState) int {
-		L.Push(errFn)
+		L.Push(errFn.AsLValue())
 		err := L.PCall(0, 0, nil)
 		if err != nil {
 			L.RaiseError("A New Error")
 		}
 		return 0
 	})
-	L.Push(changeError)
+	L.Push(changeError.AsLValue())
 	err := L.PCall(0, 0, nil)
 	errorIfFalse(t, strings.Contains(err.Error(), "A New Error"), "error not propogated correctly")
 }
@@ -504,7 +504,7 @@ func TestRegistryFixedOverflow(t *testing.T) {
 	// fill the stack and check we get a panic
 	test := LString("test")
 	for i := 0; i < len(reg.array); i++ {
-		reg.Push(test)
+		reg.Push(test.AsLValue())
 	}
 	defer func() {
 		rcv := recover()
@@ -519,7 +519,7 @@ func TestRegistryFixedOverflow(t *testing.T) {
 		}
 	}()
 	expectedPanic = true
-	reg.Push(test)
+	reg.Push(test.AsLValue())
 }
 
 func TestRegistryAutoGrow(t *testing.T) {
@@ -541,10 +541,10 @@ func TestRegistryAutoGrow(t *testing.T) {
 	reg := state.reg
 	test := LString("test")
 	for i := 0; i < 300; i++ {
-		reg.Push(test)
+		reg.Push(test.AsLValue())
 	}
 	expectedPanic = true
-	reg.Push(test)
+	reg.Push(test.AsLValue())
 }
 
 // This test exposed a panic caused by accessing an unassigned var in the lua registry.
@@ -722,7 +722,7 @@ func BenchmarkRegistryPushPopAutoGrow(t *testing.B) {
 
 	for j := 0; j < t.N; j++ {
 		for i := 0; i < sz; i++ {
-			reg.Push(value)
+			reg.Push(value.AsLValue())
 		}
 		for i := 0; i < sz; i++ {
 			reg.Pop()
@@ -740,7 +740,7 @@ func BenchmarkRegistryPushPopFixed(t *testing.B) {
 
 	for j := 0; j < t.N; j++ {
 		for i := 0; i < sz; i++ {
-			reg.Push(value)
+			reg.Push(value.AsLValue())
 		}
 		for i := 0; i < sz; i++ {
 			reg.Pop()

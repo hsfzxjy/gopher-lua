@@ -14,12 +14,13 @@ func positionString(level int) string {
 }
 
 func errorIfNotEqual(t *testing.T, v1, v2 interface{}) {
-	if v1 != v2 {
+	if !AnyEqual(v1, v2) {
 		t.Errorf("%v '%v' expected, but got '%v'", positionString(1), v1, v2)
 	}
 }
 
 func errorIfFalse(t *testing.T, cond bool, msg string, args ...interface{}) {
+	args = AnysNormalize(args)
 	if !cond {
 		if len(args) > 0 {
 			t.Errorf("%v %v", positionString(1), fmt.Sprintf(msg, args...))

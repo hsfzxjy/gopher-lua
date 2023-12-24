@@ -23,8 +23,8 @@ func OpenChannel(L *LState) int {
 	//	if !ok {
 	mod = L.RegisterModule(ChannelLibName, channelFuncs)
 	mt := L.SetFuncs(L.NewTable(), channelMethods)
-	mt.RawSetString("__index", mt)
-	L.G.builtinMts[int(LTChannel)] = mt
+	mt.RawSetString("__index", mt.AsLValue())
+	L.G.builtinMts[int(LTChannel)] = mt.AsLValue()
 	//	}
 	L.Push(mod)
 	return 1
@@ -37,7 +37,7 @@ var channelFuncs = map[string]LGFunction{
 
 func channelMake(L *LState) int {
 	buffer := L.OptInt(1, 0)
-	L.Push(LChannel(make(chan LValue, buffer)))
+	L.Push(LChannel(make(chan LValue, buffer)).AsLValue())
 	return 1
 }
 
@@ -52,13 +52,13 @@ func channelSelect(L *LState) int {
 			Send: reflect.ValueOf(nil),
 		}
 		tbl := L.CheckTable(i + 1)
-		dir, ok1 := tbl.RawGetInt(1).(LString)
+		dir, ok1 := tbl.RawGetInt(1).AsLString()
 		if !ok1 {
 			L.ArgError(i+1, "invalid select case")
 		}
 		switch string(dir) {
 		case "<-|":
-			ch, ok := tbl.RawGetInt(2).(LChannel)
+			ch, ok := tbl.RawGetInt(2).AsLChannel()
 			if !ok {
 				L.ArgError(i+1, "invalid select case")
 			}
@@ -69,7 +69,7 @@ func channelSelect(L *LState) int {
 			}
 			cas.Send = reflect.ValueOf(v)
 		case "|<-":
-			ch, ok := tbl.RawGetInt(2).(LChannel)
+			ch, ok := tbl.RawGetInt(2).AsLChannel()
 			if !ok {
 				L.ArgError(i+1, "invalid select case")
 			}
@@ -100,20 +100,20 @@ func channelSelect(L *LState) int {
 	lv := LNil
 	if recv.Kind() != 0 {
 		lv, _ = recv.Interface().(LValue)
-		if lv == nil {
+		if lv == (LValue{}) {
 			lv = LNil
 		}
 	}
-	tbl := L.Get(pos + 1).(*LTable)
+	tbl := L.Get(pos + 1).MustLTable()
 	last := tbl.RawGetInt(tbl.Len())
 	if last.Type() == LTFunction {
 		L.Push(last)
 		switch cases[pos].Dir {
 		case reflect.SelectRecv:
 			if rok {
-				L.Push(LTrue)
+				L.Push(LTrue.AsLValue())
 			} else {
-				L.Push(LFalse)
+				L.Push(LFalse.AsLValue())
 			}
 			L.Push(lv)
 			L.Call(2, 0)
@@ -124,12 +124,12 @@ func channelSelect(L *LState) int {
 			L.Call(0, 0)
 		}
 	}
-	L.Push(LNumber(pos + 1))
+	L.Push(LNumber(pos + 1).AsLValue())
 	L.Push(lv)
 	if rok {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 	} else {
-		L.Push(LFalse)
+		L.Push(LFalse.AsLValue())
 	}
 	return 3
 }
@@ -159,10 +159,10 @@ func channelReceive(L *LState) int {
 		v, ok = rch.Recv()
 	}
 	if ok {
-		L.Push(LTrue)
+		L.Push(LTrue.AsLValue())
 		L.Push(v.Interface().(LValue))
 	} else {
-		L.Push(LFalse)
+		L.Push(LFalse.AsLValue())
 		L.Push(LNil)
 	}
 	return 2
