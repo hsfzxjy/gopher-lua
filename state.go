@@ -977,13 +977,15 @@ func (ls *LState) findUpvalue(idx int) *Upvalue {
 
 func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 	var metatable LValue = LNil
-	switch obj := lvalue; obj.Type() {
+	switch typ := lvalue.Type(); typ {
 	case LTTable:
-		metatable = obj.MustLTable().Metatable
+		metatable = lvalue.MustLTable().Metatable
 	case LTUserData:
-		metatable = obj.MustLUserData().Metatable
+		metatable = lvalue.MustLUserData().Metatable
 	default:
-		if table, ok := ls.G.builtinMts[int(obj.Type())]; ok {
+		if entry, ok := cdr.Entry(typ); ok {
+			return entry.metatable.AsLValue()
+		} else if table, ok := ls.G.builtinMts[int(lvalue.Type())]; ok {
 			metatable = table
 		}
 	}
