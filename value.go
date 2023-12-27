@@ -174,7 +174,7 @@ func (lv LValue) Type() LValueType {
 	if lv.dataptr == ltSentinelNumber {
 		return LTNumber
 	}
-	if lv.data&maxUintptr == 0 || lv.data == maxUintptr+uintptr(LTString) {
+	if lv.data&maxUintptr == 0 {
 		return LTString
 	}
 	typ := lv.data - maxUintptr
@@ -246,9 +246,6 @@ func (lv LValue) AsLString() (LString, bool) {
 	if lv.data&maxUintptr == 0 {
 		str := unsafe.String((*byte)(lv.dataptr), int(lv.data))
 		return LString(str), true
-	}
-	if lv.data == maxUintptr+uintptr(LTString) {
-		return "", true
 	}
 	return "", false
 }
@@ -398,11 +395,13 @@ var LFalse = LBool(false)
 
 type LString string
 
+var emptyStringPtr = new(byte)
+
 func (st LString) String() string   { return string(st) }
 func (st LString) Type() LValueType { return LTString }
 func (st LString) AsLValue() LValue {
 	if st == "" {
-		return LValue{dataptr: nil, data: maxUintptr + uintptr(LTString)}
+		return LValue{dataptr: unsafe.Pointer(emptyStringPtr), data: 0}
 	}
 	return LValue{dataptr: unsafe.Pointer(unsafe.StringData(string(st))), data: uintptr(len(st))}
 }
