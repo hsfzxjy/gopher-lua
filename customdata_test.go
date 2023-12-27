@@ -24,16 +24,9 @@ func __MyInt__tostring(L *LState) int {
 }
 
 func init() {
-	var L = (*LState)(nil)
-	var mt = L.NewTable()
-	mt.RawSetString("__add", (&LFunction{
-		IsG:       true,
-		GFunction: _MyInt__add,
-	}).AsLValue())
-	mt.RawSetString("__tostring", (&LFunction{
-		IsG:       true,
-		GFunction: __MyInt__tostring,
-	}).AsLValue())
+	var mt = NewTable()
+	mt.RawSetString("__add", NewGFunction(_MyInt__add).AsLValue())
+	mt.RawSetString("__tostring", NewGFunction(__MyInt__tostring).AsLValue())
 	MyIntHelper = RegisterCustomData[MyInt](mt)
 }
 

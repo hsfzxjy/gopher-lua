@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 /* checkType {{{ */
@@ -463,3 +464,31 @@ func (ls *LState) OptChannel(n int, ch chan LValue) chan LValue {
 /* }}} */
 
 //
+
+func NewTable() *LTable {
+	return (*LState)(nil).NewTable()
+}
+
+func NewGFunction(fn LGFunction) *LFunction {
+	return &LFunction{
+		IsG: true, Env: AutoEnv(),
+		GFunction: fn,
+	}
+}
+
+var AutoEnv = sync.OnceValue(func() *LTable {
+	T := new(LTable)
+	mt := new(LTable)
+	mt.RawSetString("__index", (&LFunction{
+		IsG: true, Env: T,
+		GFunction: autoEnv__index,
+	}).AsLValue())
+	T.Metatable = mt.AsLValue()
+	return T
+})
+
+func autoEnv__index(L *LState) int {
+	key := L.CheckString(2)
+	L.Push(L.GetField(L.Env.AsLValue(), key))
+	return 1
+}
