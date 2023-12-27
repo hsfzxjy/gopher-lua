@@ -522,7 +522,7 @@ func (fc *funcContext) GetLabelPc(label int) int {
 func (fc *funcContext) ConstIndex(value LValue) int {
 	ctype := value.Type()
 	for i, lv := range fc.Proto.Constants {
-		if lv.Type() == ctype && lv == value {
+		if lv.Type() == ctype && lv.Equals(value) {
 			return i
 		}
 	}

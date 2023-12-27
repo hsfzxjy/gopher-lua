@@ -2025,7 +2025,7 @@ func init() {
 				}
 			}
 			L.callR(2, nret, RA+3)
-			if value := reg.Get(RA + 3); value != LNil {
+			if value := reg.Get(RA + 3); !value.Equals(LNil) {
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 				{
@@ -2422,7 +2422,7 @@ func equals(L *LState, lhs, rhs LValue, raw bool) bool {
 	case LTString:
 		ret = string(lhs.MustLString()) == string(rhs.MustLString())
 	case LTUserData, LTTable:
-		if lhs == rhs {
+		if lhs.Equals(rhs) {
 			ret = true
 		} else if !raw {
 			switch objectRational(L, lhs, rhs, "__eq") {
@@ -2433,7 +2433,7 @@ func equals(L *LState, lhs, rhs LValue, raw bool) bool {
 			}
 		}
 	default:
-		ret = lhs == rhs
+		ret = lhs.Equals(rhs)
 	}
 	return ret
 }
@@ -2452,7 +2452,7 @@ func objectRationalWithError(L *LState, lhs, rhs LValue, event string) bool {
 func objectRational(L *LState, lhs, rhs LValue, event string) int {
 	m1 := L.metaOp1(lhs, event)
 	m2 := L.metaOp1(rhs, event)
-	if m1.Type() == LTFunction && m1 == m2 {
+	if m1.Type() == LTFunction && m1.Equals(m2) {
 		L.reg.Push(m1)
 		L.reg.Push(lhs)
 		L.reg.Push(rhs)

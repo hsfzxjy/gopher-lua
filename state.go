@@ -990,11 +990,11 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 		}
 	}
 
-	if !rawget && metatable != LNil {
+	if !rawget && !metatable.Equals(LNil) {
 		oldmt := metatable
 		if tb, ok := metatable.AsLTable(); ok {
 			metatable = tb.RawGetString("__metatable")
-			if metatable == LNil {
+			if metatable.Equals(LNil) {
 				metatable = oldmt
 			}
 		}
@@ -1004,7 +1004,7 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 }
 
 func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
-	if mt := ls.metatable(lvalue, true); mt != LNil {
+	if mt := ls.metatable(lvalue, true); !mt.Equals(LNil) {
 		if tb, ok := mt.AsLTable(); ok {
 			return tb.RawGetString(event)
 		}
@@ -1013,14 +1013,14 @@ func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 }
 
 func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
-	if mt := ls.metatable(value1, true); mt != LNil {
+	if mt := ls.metatable(value1, true); !mt.Equals(LNil) {
 		if tb, ok := mt.AsLTable(); ok {
-			if ret := tb.RawGetString(event); ret != LNil {
+			if ret := tb.RawGetString(event); !ret.Equals(LNil) {
 				return ret
 			}
 		}
 	}
-	if mt := ls.metatable(value2, true); mt != LNil {
+	if mt := ls.metatable(value2, true); !mt.Equals(LNil) {
 		if tb, ok := mt.AsLTable(); ok {
 			return tb.RawGetString(event)
 		}
@@ -1284,12 +1284,12 @@ func (ls *LState) getField(obj LValue, key LValue) LValue {
 		tb, istable := curobj.AsLTable()
 		if istable {
 			ret := tb.RawGet(key)
-			if ret != LNil {
+			if !ret.Equals(LNil) {
 				return ret
 			}
 		}
 		metaindex := ls.metaOp1(curobj, "__index")
-		if metaindex == LNil {
+		if metaindex.Equals(LNil) {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
 			}
@@ -1315,12 +1315,12 @@ func (ls *LState) getFieldString(obj LValue, key string) LValue {
 		tb, istable := curobj.AsLTable()
 		if istable {
 			ret := tb.RawGetString(key)
-			if ret != LNil {
+			if !ret.Equals(LNil) {
 				return ret
 			}
 		}
 		metaindex := ls.metaOp1(curobj, "__index")
-		if metaindex == LNil {
+		if metaindex.Equals(LNil) {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
@@ -1345,13 +1345,13 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 	for i := 0; i < MaxTableGetLoop; i++ {
 		tb, istable := curobj.AsLTable()
 		if istable {
-			if tb.RawGet(key) != LNil {
+			if !tb.RawGet(key).Equals(LNil) {
 				ls.RawSet(tb, key, value)
 				return
 			}
 		}
 		metaindex := ls.metaOp1(curobj, "__newindex")
-		if metaindex == LNil {
+		if metaindex.Equals(LNil) {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
 			}
@@ -1377,13 +1377,13 @@ func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
 	for i := 0; i < MaxTableGetLoop; i++ {
 		tb, istable := curobj.AsLTable()
 		if istable {
-			if tb.RawGetString(key) != LNil {
+			if !tb.RawGetString(key).Equals(LNil) {
 				tb.RawSetString(key, value)
 				return
 			}
 		}
 		metaindex := ls.metaOp1(curobj, "__newindex")
-		if metaindex == LNil {
+		if metaindex.Equals(LNil) {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
@@ -1919,7 +1919,7 @@ func (ls *LState) GetTable(obj LValue, key LValue) LValue {
 func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
 	if n, ok := key.AsLNumber(); ok && math.IsNaN(float64(n)) {
 		ls.RaiseError("table index is NaN")
-	} else if key == LNil {
+	} else if key.Equals(LNil) {
 		ls.RaiseError("table index is nil")
 	}
 	tb.RawSet(key, value)

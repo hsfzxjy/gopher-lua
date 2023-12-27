@@ -30,8 +30,13 @@ func (vt LValueType) String() string {
 }
 
 type LValue struct {
+	_       [0]func()
 	dataptr unsafe.Pointer
 	data    uintptr
+}
+
+func (lv LValue) asComparable() [2]uintptr {
+	return [2]uintptr{uintptr(lv.dataptr), lv.data}
 }
 
 var (
@@ -45,13 +50,13 @@ var (
 const maxUintptr = ^uintptr(0)>>1 + 1
 
 func AnyEqual(v1, v2 any) bool {
-	if v1 == v2 {
-		return true
-	}
 	v11, ok1 := v1.(LValue)
 	v22, ok2 := v2.(LValue)
-	if ok1 == ok2 {
-		return false
+	if !ok1 && !ok2 {
+		return v1 == v2
+	}
+	if ok1 && ok2 {
+		return v11.Equals(v22)
 	}
 	if ok1 {
 		return v11.AsAny() == v2
@@ -73,9 +78,13 @@ func AnysNormalize(x []any) []any {
 	return x
 }
 
+func (lv LValue) IsEmpty() bool {
+	return lv.dataptr == nil && lv.data == 0
+}
+
 func (lv LValue) Equals(other LValue) bool {
 	if v1, ok1 := lv.AsLString(); !ok1 {
-		return lv == other
+		return lv.dataptr == other.dataptr && lv.data == other.data
 	} else if v2, ok2 := other.AsLString(); !ok2 {
 		return false
 	} else {
@@ -159,7 +168,7 @@ func (lv LValue) AsAny() any {
 func (lv LValue) AsLValue() LValue { return lv }
 
 func (lv LValue) Type() LValueType {
-	if lv == (LValue{}) {
+	if lv.IsEmpty() {
 		return LTUnknown
 	}
 	if lv.dataptr == ltSentinelNumber {
@@ -231,7 +240,7 @@ func (lv LValue) MustLString() LString {
 }
 
 func (lv LValue) AsLString() (LString, bool) {
-	if lv.dataptr == ltSentinelNumber || lv == (LValue{}) {
+	if lv.dataptr == ltSentinelNumber || lv.IsEmpty() {
 		return "", false
 	}
 	if lv.data&maxUintptr == 0 {
@@ -365,7 +374,7 @@ func (nl *LNilType) Type() LValueType { return LTNil }
 func (nl *LNilType) AsLValue() LValue { return LNil }
 
 var LNilValue = new(LNilType)
-var LNil = LValue{ltSentinelNil, maxUintptr + uintptr(LTNil)}
+var LNil = LValue{dataptr: ltSentinelNil, data: maxUintptr + uintptr(LTNil)}
 
 type LBool bool
 
@@ -378,9 +387,9 @@ func (bl LBool) String() string {
 func (bl LBool) Type() LValueType { return LTBool }
 func (bl LBool) AsLValue() LValue {
 	if bool(bl) {
-		return LValue{ltSentinelTrue, maxUintptr + uintptr(LTBool)}
+		return LValue{dataptr: ltSentinelTrue, data: maxUintptr + uintptr(LTBool)}
 	} else {
-		return LValue{ltSentinelFalse, maxUintptr + uintptr(LTBool)}
+		return LValue{dataptr: ltSentinelFalse, data: maxUintptr + uintptr(LTBool)}
 	}
 }
 
@@ -393,9 +402,9 @@ func (st LString) String() string   { return string(st) }
 func (st LString) Type() LValueType { return LTString }
 func (st LString) AsLValue() LValue {
 	if st == "" {
-		return LValue{nil, maxUintptr + uintptr(LTString)}
+		return LValue{dataptr: nil, data: maxUintptr + uintptr(LTString)}
 	}
-	return LValue{unsafe.Pointer(unsafe.StringData(string(st))), uintptr(len(st))}
+	return LValue{dataptr: unsafe.Pointer(unsafe.StringData(string(st))), data: uintptr(len(st))}
 }
 
 // fmt.Formatter interface
@@ -421,7 +430,7 @@ func (nm LNumber) String() string {
 
 func (nm LNumber) Type() LValueType { return LTNumber }
 func (nm LNumber) AsLValue() LValue {
-	return LValue{ltSentinelNumber, uintptr(math.Float64bits(float64(nm)))}
+	return LValue{dataptr: ltSentinelNumber, data: uintptr(math.Float64bits(float64(nm)))}
 }
 
 // fmt.Formatter interface
@@ -444,20 +453,135 @@ func (nm LNumber) Format(f fmt.State, c rune) {
 	}
 }
 
+type ltableSlot struct {
+	prev, next *ltableSlot
+	key, value LValue
+}
+
+func (s *ltableSlot) isHead() bool { return s.prev == nil }
+func (s *ltableSlot) isTail() bool { return s.next == nil }
+
+const blockSize = 32
+
+type ltableSlotBlock struct {
+	ntouched int
+	data     [blockSize]ltableSlot
+}
+
+func (block *ltableSlotBlock) isFull() bool {
+	return block.ntouched == blockSize
+}
+
+func (block *ltableSlotBlock) alloc() (*ltableSlot, int) {
+	if block.ntouched >= len(block.data) {
+		return nil, -1
+	}
+	slot := &block.data[block.ntouched]
+	block.ntouched++
+	return slot, block.ntouched - 1
+}
+
+type ltableSlots struct {
+	blocks       []*ltableSlotBlock
+	lastBlockIdx int
+	freeHead     *ltableSlot
+	start, end   *ltableSlot
+}
+
+func (slots *ltableSlots) grow(size int) {
+	if size <= 0 {
+		return
+	}
+	moreBlocks := ((size - 1) / blockSize) + 1 - len(slots.blocks)
+	if moreBlocks <= 0 {
+		return
+	}
+	data := make([]ltableSlotBlock, moreBlocks)
+	for i := range data {
+		slots.blocks = append(slots.blocks, &data[i])
+	}
+}
+
+func (slots *ltableSlots) Init(size int) {
+	slots.grow(size)
+}
+
+func (slots *ltableSlots) Release(slot *ltableSlot) {
+	if slot == nil {
+		return
+	}
+	if slot.isHead() && slot.isTail() {
+		slots.start = nil
+		slots.end = nil
+	} else if slot.isHead() {
+		slot.next.prev = nil
+		slots.start = slot.next
+	} else if slot.isTail() {
+		slot.prev.next = nil
+		slots.end = slot.prev
+	} else {
+		prev, next := slot.prev, slot.next
+		prev.next = next
+		next.prev = prev
+	}
+	*slot = ltableSlot{}
+	slot.key = LValue{}
+	slot.value = LValue{}
+	slot.prev = nil
+	slot.next = slots.freeHead
+	slots.freeHead = slot
+}
+
+func (slots *ltableSlots) Put(key, value LValue) *ltableSlot {
+	var availBlock *ltableSlotBlock
+GET_AVAIL_BLOCK:
+	for slots.lastBlockIdx < len(slots.blocks) {
+		block := slots.blocks[slots.lastBlockIdx]
+		if !block.isFull() {
+			availBlock = block
+			break
+		}
+		slots.lastBlockIdx++
+	}
+	if availBlock == nil && slots.freeHead == nil {
+		slots.grow(max(len(slots.blocks)*blockSize*3/2, 1))
+		goto GET_AVAIL_BLOCK
+	}
+	var slot *ltableSlot
+	if availBlock != nil {
+		slot, _ = availBlock.alloc()
+	} else {
+		slot = slots.freeHead
+		slots.freeHead = slot.next
+		slot.prev = nil
+		slot.next = nil
+	}
+	slot.key = key
+	slot.value = value
+	if slots.start == nil {
+		slots.start = slot
+	}
+	if slots.end != nil {
+		slot.prev = slots.end
+		slots.end.next = slot
+	}
+	slots.end = slot
+	return slot
+}
+
 type LTable struct {
 	Metatable LValue
 
 	array   []LValue
-	dict    map[LValue]LValue
-	strdict map[string]LValue
-	keys    []LValue
-	k2i     map[LValue]int
+	strdict map[string]*ltableSlot
+	dict    map[[2]uintptr]*ltableSlot
+	slots   ltableSlots
 }
 
 func (tb *LTable) String() string   { return fmt.Sprintf("table: %p", tb) }
 func (tb *LTable) Type() LValueType { return LTTable }
 func (tb *LTable) AsLValue() LValue {
-	return LValue{unsafe.Pointer(tb), maxUintptr + uintptr(LTTable)}
+	return LValue{dataptr: unsafe.Pointer(tb), data: maxUintptr + uintptr(LTTable)}
 }
 
 type LFunction struct {
@@ -472,7 +596,7 @@ type LGFunction func(*LState) int
 func (fn *LFunction) String() string   { return fmt.Sprintf("function: %p", fn) }
 func (fn *LFunction) Type() LValueType { return LTFunction }
 func (fn *LFunction) AsLValue() LValue {
-	return LValue{unsafe.Pointer(fn), maxUintptr + uintptr(LTFunction)}
+	return LValue{dataptr: unsafe.Pointer(fn), data: maxUintptr + uintptr(LTFunction)}
 }
 
 type Global struct {
@@ -509,7 +633,7 @@ type LState struct {
 func (ls *LState) String() string   { return fmt.Sprintf("thread: %p", ls) }
 func (ls *LState) Type() LValueType { return LTThread }
 func (ls *LState) AsLValue() LValue {
-	return LValue{unsafe.Pointer(ls), maxUintptr + uintptr(LTThread)}
+	return LValue{dataptr: unsafe.Pointer(ls), data: maxUintptr + uintptr(LTThread)}
 }
 
 type LUserData struct {
@@ -521,7 +645,7 @@ type LUserData struct {
 func (ud *LUserData) String() string   { return fmt.Sprintf("userdata: %p", ud) }
 func (ud *LUserData) Type() LValueType { return LTUserData }
 func (ud *LUserData) AsLValue() LValue {
-	return LValue{unsafe.Pointer(ud), maxUintptr + uintptr(LTUserData)}
+	return LValue{dataptr: unsafe.Pointer(ud), data: maxUintptr + uintptr(LTUserData)}
 }
 
 type LChannel chan LValue
@@ -530,5 +654,5 @@ func (ch LChannel) String() string   { return fmt.Sprintf("channel: %p", ch) }
 func (ch LChannel) Type() LValueType { return LTChannel }
 func (ch LChannel) AsLValue() LValue {
 	var chptr = unsafe.Pointer(&ch)
-	return LValue{*(*unsafe.Pointer)(chptr), maxUintptr + uintptr(LTChannel)}
+	return LValue{dataptr: *(*unsafe.Pointer)(chptr), data: maxUintptr + uintptr(LTChannel)}
 }

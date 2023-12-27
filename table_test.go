@@ -1,6 +1,7 @@
 package lua
 
 import (
+	"strconv"
 	"testing"
 )
 
@@ -254,4 +255,15 @@ func TestTableForEach(t *testing.T) {
 	for _, v := range boolCounter {
 		errorIfNotEqual(t, 1, v)
 	}
+}
+
+func TestTableGrow(t *testing.T) {
+	tbl := newLTable(0, 0)
+
+	for i := 1; i <= blockSize; i++ {
+		tbl.RawSetString(strconv.Itoa(i), LNumber(i).AsLValue())
+	}
+	errorIfNotEqual(t, 1, len(tbl.slots.blocks))
+	tbl.RawSetString(strconv.Itoa(1), LNil)
+	errorIfNotEqual(t, 1, len(tbl.slots.blocks))
 }

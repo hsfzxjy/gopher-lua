@@ -196,7 +196,7 @@ func osTime(L *LState) int {
 		L.Push(LNumber(time.Now().Unix()).AsLValue())
 	} else {
 		lv := L.CheckAny(1)
-		if lv == LNil {
+		if lv.Equals(LNil) {
 			L.Push(LNumber(time.Now().Unix()).AsLValue())
 		} else {
 			tbl, ok := lv.AsLTable()

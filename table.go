@@ -41,7 +41,10 @@ func newLTable(acap int, hcap int) *LTable {
 		tb.array = make([]LValue, 0, acap)
 	}
 	if hcap != 0 {
-		tb.strdict = make(map[string]LValue, hcap)
+		tb.strdict = make(map[string]*ltableSlot, hcap)
+		tb.slots.Init(hcap)
+	} else {
+		tb.slots.Init(0)
 	}
 	return tb
 }
@@ -54,7 +57,7 @@ func (tb *LTable) Len() int {
 	var prev LValue = LNil
 	for i := len(tb.array) - 1; i >= 0; i-- {
 		v := tb.array[i]
-		if prev == LNil && v != LNil {
+		if prev.Equals(LNil) && !v.Equals(LNil) {
 			return i + 1
 		}
 		prev = v
@@ -64,18 +67,18 @@ func (tb *LTable) Len() int {
 
 // Append appends a given LValue to this LTable.
 func (tb *LTable) Append(value LValue) {
-	if value == LNil {
+	if value.Equals(LNil) {
 		return
 	}
 	if tb.array == nil {
 		tb.array = make([]LValue, 0, defaultArrayCap)
 	}
-	if len(tb.array) == 0 || tb.array[len(tb.array)-1] != LNil {
+	if len(tb.array) == 0 || !tb.array[len(tb.array)-1].Equals(LNil) {
 		tb.array = append(tb.array, value)
 	} else {
 		i := len(tb.array) - 2
 		for ; i >= 0; i-- {
-			if tb.array[i] != LNil {
+			if !tb.array[i].Equals(LNil) {
 				break
 			}
 		}
@@ -108,7 +111,7 @@ func (tb *LTable) MaxN() int {
 		return 0
 	}
 	for i := len(tb.array) - 1; i >= 0; i-- {
-		if tb.array[i] != LNil {
+		if !tb.array[i].Equals(LNil) {
 			return i + 1
 		}
 	}
@@ -203,23 +206,17 @@ func (tb *LTable) RawSetInt(key int, value LValue) {
 // RawSetString sets a given LValue to a given string index without the __newindex metamethod.
 func (tb *LTable) RawSetString(key string, value LValue) {
 	if tb.strdict == nil {
-		tb.strdict = make(map[string]LValue, defaultHashCap)
-	}
-	if tb.keys == nil {
-		tb.keys = []LValue{}
-		tb.k2i = map[LValue]int{}
+		tb.strdict = make(map[string]*ltableSlot, defaultHashCap)
 	}
 
-	if value == LNil {
-		// TODO tb.keys and tb.k2i should also be removed
+	slot := tb.strdict[key]
+	if value.Equals(LNil) {
 		delete(tb.strdict, key)
+		tb.slots.Release(slot)
+	} else if slot != nil {
+		slot.value = value
 	} else {
-		tb.strdict[key] = value
-		lkey := LString(key)
-		if _, ok := tb.k2i[lkey.AsLValue()]; !ok {
-			tb.k2i[lkey.AsLValue()] = len(tb.keys)
-			tb.keys = append(tb.keys, lkey.AsLValue())
-		}
+		tb.strdict[key] = tb.slots.Put(LString(key).AsLValue(), value)
 	}
 }
 
@@ -230,22 +227,18 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 		return
 	}
 	if tb.dict == nil {
-		tb.dict = make(map[LValue]LValue, len(tb.strdict))
-	}
-	if tb.keys == nil {
-		tb.keys = []LValue{}
-		tb.k2i = map[LValue]int{}
+		tb.dict = make(map[[2]uintptr]*ltableSlot, len(tb.strdict))
 	}
 
-	if value == LNil {
-		// TODO tb.keys and tb.k2i should also be removed
-		delete(tb.dict, key)
+	ckey := key.asComparable()
+	slot := tb.dict[ckey]
+	if value.Equals(LNil) {
+		delete(tb.dict, ckey)
+		tb.slots.Release(slot)
+	} else if slot != nil {
+		slot.value = value
 	} else {
-		tb.dict[key] = value
-		if _, ok := tb.k2i[key]; !ok {
-			tb.k2i[key] = len(tb.keys)
-			tb.keys = append(tb.keys, key)
-		}
+		tb.dict[ckey] = tb.slots.Put(key, value)
 	}
 }
 
@@ -270,15 +263,15 @@ func (tb *LTable) RawGet(key LValue) LValue {
 			return LNil
 		}
 		if ret, ok := tb.strdict[string(v)]; ok {
-			return ret
+			return ret.value
 		}
 		return LNil
 	}
 	if tb.dict == nil {
 		return LNil
 	}
-	if v, ok := tb.dict[key]; ok {
-		return v
+	if v, ok := tb.dict[key.asComparable()]; ok {
+		return v.value
 	}
 	return LNil
 }
@@ -302,15 +295,15 @@ func (tb *LTable) RawGetH(key LValue) LValue {
 			return LNil
 		}
 		if v, vok := tb.strdict[string(s)]; vok {
-			return v
+			return v.value
 		}
 		return LNil
 	}
 	if tb.dict == nil {
 		return LNil
 	}
-	if v, ok := tb.dict[key]; ok {
-		return v
+	if v, ok := tb.dict[key.asComparable()]; ok {
+		return v.value
 	}
 	return LNil
 }
@@ -321,7 +314,7 @@ func (tb *LTable) RawGetString(key string) LValue {
 		return LNil
 	}
 	if v, vok := tb.strdict[string(key)]; vok {
-		return v
+		return v.value
 	}
 	return LNil
 }
@@ -330,62 +323,57 @@ func (tb *LTable) RawGetString(key string) LValue {
 func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	if tb.array != nil {
 		for i, v := range tb.array {
-			if v != LNil {
+			if !v.Equals(LNil) {
 				cb(LNumber(i+1).AsLValue(), v)
 			}
 		}
 	}
-	if tb.strdict != nil {
-		for k, v := range tb.strdict {
-			if v != LNil {
-				cb(LString(k).AsLValue(), v)
-			}
-		}
-	}
-	if tb.dict != nil {
-		for k, v := range tb.dict {
-			if v != LNil {
-				cb(k, v)
-			}
-		}
+	slot := tb.slots.start
+	for slot != nil {
+		cb(slot.key, slot.value)
+		slot = slot.next
 	}
 }
 
 // This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	init := false
-	if key == LNil {
+	if key.Equals(LNil) {
 		key = LNumber(0).AsLValue()
 		init = true
 	}
 
-	if init || key != LNumber(0).AsLValue() {
+	if init || !key.Equals(LNumber(0).AsLValue()) {
 		if kv, ok := key.AsLNumber(); ok && isInteger(kv) && int(kv) >= 0 && kv < LNumber(MaxArrayIndex) {
 			index := int(kv)
 			if tb.array != nil {
 				for ; index < len(tb.array); index++ {
-					if v := tb.array[index]; v != LNil {
+					if v := tb.array[index]; !v.Equals(LNil) {
 						return LNumber(index + 1).AsLValue(), v
 					}
 				}
 			}
 			if tb.array == nil || index == len(tb.array) {
-				if (tb.dict == nil || len(tb.dict) == 0) && (tb.strdict == nil || len(tb.strdict) == 0) {
+				if tb.slots.start == nil {
 					return LNil, LNil
 				}
-				key = tb.keys[0]
-				if v := tb.RawGetH(key); v != LNil {
-					return key, v
-				}
+				return tb.slots.start.key, tb.slots.start.value
 			}
 		}
 	}
 
-	for i := tb.k2i[key] + 1; i < len(tb.keys); i++ {
-		key := tb.keys[i]
-		if v := tb.RawGetH(key); v != LNil {
-			return key, v
+	var slot *ltableSlot
+	if strKey, ok := key.AsLString(); ok {
+		if tb.strdict != nil {
+			slot = tb.strdict[string(strKey)]
 		}
+	} else if tb.dict != nil {
+		slot = tb.dict[key.asComparable()]
 	}
-	return LNil, LNil
+
+	if slot == nil || slot.next == nil {
+		return LNil, LNil
+	}
+
+	return slot.next.key, slot.next.value
 }

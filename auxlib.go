@@ -144,7 +144,7 @@ func (ls *LState) CheckOption(n int, options []string) int {
 
 func (ls *LState) OptInt(n int, d int) int {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if intv, ok := v.AsLNumber(); ok {
@@ -156,7 +156,7 @@ func (ls *LState) OptInt(n int, d int) int {
 
 func (ls *LState) OptInt64(n int, d int64) int64 {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if intv, ok := v.AsLNumber(); ok {
@@ -168,7 +168,7 @@ func (ls *LState) OptInt64(n int, d int64) int64 {
 
 func (ls *LState) OptNumber(n int, d LNumber) LNumber {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if lv, ok := v.AsLNumber(); ok {
@@ -180,7 +180,7 @@ func (ls *LState) OptNumber(n int, d LNumber) LNumber {
 
 func (ls *LState) OptString(n int, d string) string {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if lv, ok := v.AsLString(); ok {
@@ -192,7 +192,7 @@ func (ls *LState) OptString(n int, d string) string {
 
 func (ls *LState) OptBool(n int, d bool) bool {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if lv, ok := v.AsLBool(); ok {
@@ -204,7 +204,7 @@ func (ls *LState) OptBool(n int, d bool) bool {
 
 func (ls *LState) OptTable(n int, d *LTable) *LTable {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if lv, ok := v.AsLTable(); ok {
@@ -216,7 +216,7 @@ func (ls *LState) OptTable(n int, d *LTable) *LTable {
 
 func (ls *LState) OptFunction(n int, d *LFunction) *LFunction {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if lv, ok := v.AsLFunction(); ok {
@@ -228,7 +228,7 @@ func (ls *LState) OptFunction(n int, d *LFunction) *LFunction {
 
 func (ls *LState) OptUserData(n int, d *LUserData) *LUserData {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return d
 	}
 	if lv, ok := v.AsLUserData(); ok {
@@ -270,7 +270,7 @@ func (ls *LState) FindTable(obj *LTable, n string, size int) LValue {
 			return LNil
 		}
 		nextobj := ls.RawGet(curobj, LString(name).AsLValue())
-		if nextobj == LNil {
+		if nextobj.Equals(LNil) {
 			tb := ls.CreateTable(0, size)
 			ls.RawSet(curobj, LString(name).AsLValue(), tb.AsLValue())
 			curobj = tb
@@ -451,7 +451,7 @@ func (ls *LState) CheckChannel(n int) chan LValue {
 // If the given index is a LChannel, returns this channel. If this argument is absent or is nil, returns ch. Otherwise, raises an error.
 func (ls *LState) OptChannel(n int, ch chan LValue) chan LValue {
 	v := ls.Get(n)
-	if v == LNil {
+	if v.Equals(LNil) {
 		return ch
 	}
 	if ch, ok := v.AsLChannel(); ok {

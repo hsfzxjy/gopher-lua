@@ -10,7 +10,7 @@ type CustomDataHelper[T any] struct {
 }
 
 func (h *CustomDataHelper[T]) AsLValue(raw *T) LValue {
-	return LValue{unsafe.Pointer(raw), uintptr(h.entry.typ) + maxUintptr}
+	return LValue{dataptr: unsafe.Pointer(raw), data: uintptr(h.entry.typ) + maxUintptr}
 }
 
 func (h *CustomDataHelper[T]) As(lv LValue) (*T, bool) {
