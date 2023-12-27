@@ -118,7 +118,7 @@ func (lv LValue) String() string {
 }
 
 func (lv LValue) AsAny() any {
-	switch lv.Type() {
+	switch t := lv.Type(); t {
 	case LTNil:
 		v, _ := lv.AsLNil()
 		return v
@@ -146,8 +146,13 @@ func (lv LValue) AsAny() any {
 	case LTChannel:
 		v, _ := lv.AsLChannel()
 		return v
-	default:
+	case LTUnknown:
 		return nil
+	default:
+		if entry, ok := cdr.Entry(t); ok {
+			return entry.PackAny(lv.dataptr)
+		}
+		panic("unreachable")
 	}
 }
 
@@ -165,6 +170,9 @@ func (lv LValue) Type() LValueType {
 	}
 	typ := lv.data - maxUintptr
 	if typ < uintptr(LTUnknown) {
+		return LValueType(typ)
+	}
+	if _, ok := cdr.Entry(LValueType(typ)); ok {
 		return LValueType(typ)
 	}
 	return LTUnknown
@@ -244,7 +252,7 @@ func (lv LValue) MustLTable() *LTable {
 }
 
 func (lv LValue) AsLTable() (*LTable, bool) {
-	if lv.data != maxUintptr+uintptr(LTTable) {
+	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTTable) {
 		return nil, false
 	}
 	return (*LTable)(lv.dataptr), true
@@ -258,7 +266,7 @@ func (lv LValue) MustLFunction() *LFunction {
 }
 
 func (lv LValue) AsLFunction() (*LFunction, bool) {
-	if lv.data != maxUintptr+uintptr(LTFunction) {
+	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTFunction) {
 		return nil, false
 	}
 	return (*LFunction)(lv.dataptr), true
@@ -272,7 +280,7 @@ func (lv LValue) MustLUserData() *LUserData {
 }
 
 func (lv LValue) AsLUserData() (*LUserData, bool) {
-	if lv.data != maxUintptr+uintptr(LTUserData) {
+	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTUserData) {
 		return nil, false
 	}
 	return (*LUserData)(lv.dataptr), true
@@ -286,7 +294,7 @@ func (lv LValue) MustLChannel() LChannel {
 }
 
 func (lv LValue) AsLChannel() (LChannel, bool) {
-	if lv.data != maxUintptr+uintptr(LTChannel) {
+	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTChannel) {
 		return nil, false
 	}
 	return *(*LChannel)(unsafe.Pointer(&lv.dataptr)), true
@@ -300,7 +308,7 @@ func (lv LValue) MustLThread() *LState {
 }
 
 func (lv LValue) AsLThread() (*LState, bool) {
-	if lv.data != maxUintptr+uintptr(LTThread) {
+	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTThread) {
 		return nil, false
 	}
 	return (*LState)(lv.dataptr), true
