@@ -156,12 +156,12 @@ func TestTableRawSetH(t *testing.T) {
 	tbl := newLTable(0, 0)
 	tbl.RawSetH(LString("key").AsLValue(), LTrue.AsLValue())
 	tbl.RawSetH(LString("key").AsLValue(), LNil)
-	_, found := tbl.dict[LString("key").AsLValue()]
+	_, found := tbl.dict[LString("key").AsLValue().asComparable()]
 	errorIfNotEqual(t, false, found)
 
 	tbl.RawSetH(LTrue.AsLValue(), LTrue.AsLValue())
 	tbl.RawSetH(LTrue.AsLValue(), LNil)
-	_, foundb := tbl.dict[LTrue.AsLValue()]
+	_, foundb := tbl.dict[LTrue.AsLValue().asComparable()]
 	errorIfNotEqual(t, false, foundb)
 }
 
@@ -193,6 +193,17 @@ func TestTableForEach(t *testing.T) {
 	tbl.RawSetH(LTrue.AsLValue(), LString("true").AsLValue())
 	tbl.RawSetH(LFalse.AsLValue(), LString("false").AsLValue())
 
+	var numberCounter = map[LNumber]int{
+		1: 0, 2: 0, 3: 0, 4: 0,
+	}
+	var strCounter = map[LString]int{
+		"a": 0, "b": 0, "c": 0,
+	}
+	var boolCounter = map[LBool]int{
+		LTrue:  0,
+		LFalse: 0,
+	}
+
 	tbl.ForEach(func(key, value LValue) {
 		switch k := key; k.Type() {
 		case LTBool:
@@ -204,6 +215,7 @@ func TestTableForEach(t *testing.T) {
 			default:
 				t.Fail()
 			}
+			boolCounter[k.MustLBool()]++
 		case LTNumber:
 			switch int(k.MustLNumber()) {
 			case 1:
@@ -217,6 +229,7 @@ func TestTableForEach(t *testing.T) {
 			default:
 				t.Fail()
 			}
+			numberCounter[k.MustLNumber()]++
 		case LTString:
 			switch string(k.MustLString()) {
 			case "a":
@@ -228,6 +241,17 @@ func TestTableForEach(t *testing.T) {
 			default:
 				t.Fail()
 			}
+			strCounter[k.MustLString()]++
 		}
 	})
+
+	for _, v := range numberCounter {
+		errorIfNotEqual(t, 1, v)
+	}
+	for _, v := range strCounter {
+		errorIfNotEqual(t, 1, v)
+	}
+	for _, v := range boolCounter {
+		errorIfNotEqual(t, 1, v)
+	}
 }
