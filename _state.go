@@ -828,7 +828,7 @@ func (ls *LState) rkString(idx int) string {
 	if (idx & opBitRk) != 0 {
 		return ls.currentFrame.Fn.Proto.stringConstants[idx & ^opBitRk]
 	}
-	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].MustLString())
+	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].mustLStringUnchecked())
 }
 
 func (ls *LState) closeUpvalues(idx int) { // +inline-start
@@ -890,11 +890,11 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 		}
 	}
 
-	if !rawget && !metatable.Equals(LNil) {
+	if !rawget && !metatable.EqualsLNil() {
 		oldmt := metatable
 		if tb, ok := metatable.AsLTable(); ok {
 			metatable = tb.RawGetString("__metatable")
-			if metatable.Equals(LNil) {
+			if metatable.EqualsLNil() {
 				metatable = oldmt
 			}
 		}
@@ -904,7 +904,7 @@ func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
 }
 
 func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
-	if mt := ls.metatable(lvalue, true); !mt.Equals(LNil) {
+	if mt := ls.metatable(lvalue, true); !mt.EqualsLNil() {
 		if tb, ok := mt.AsLTable(); ok {
 			return tb.RawGetString(event)
 		}
@@ -913,14 +913,14 @@ func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 }
 
 func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
-	if mt := ls.metatable(value1, true); !mt.Equals(LNil) {
+	if mt := ls.metatable(value1, true); !mt.EqualsLNil() {
 		if tb, ok := mt.AsLTable(); ok {
-			if ret := tb.RawGetString(event); !ret.Equals(LNil) {
+			if ret := tb.RawGetString(event); !ret.EqualsLNil() {
 				return ret
 			}
 		}
 	}
-	if mt := ls.metatable(value2, true); !mt.Equals(LNil) {
+	if mt := ls.metatable(value2, true); !mt.EqualsLNil() {
 		if tb, ok := mt.AsLTable(); ok {
 			return tb.RawGetString(event)
 		}
@@ -1065,18 +1065,12 @@ func (ls *LState) callR(nargs, nret, rbase int) {
 	}
 }
 
-func (ls *LState) getField(obj LValue, key LValue) LValue {
+func (ls *LState) getFieldSlow(obj LValue, key LValue, istable bool) LValue {
+	var tb *LTable
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.AsLTable()
-		if istable {
-			ret := tb.RawGet(key)
-			if !ret.Equals(LNil) {
-				return ret
-			}
-		}
 		metaindex := ls.metaOp1(curobj, "__index")
-		if metaindex.Equals(LNil) {
+		if metaindex.EqualsLNil() {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
 			}
@@ -1091,23 +1085,40 @@ func (ls *LState) getField(obj LValue, key LValue) LValue {
 		} else {
 			curobj = metaindex
 		}
+		tb, istable = curobj.AsLTable()
+		if istable {
+			ret := tb.RawGet(key)
+			if !ret.EqualsLNil() {
+				return ret
+			}
+		}
 	}
 	ls.RaiseError("too many recursions in gettable")
 	return LValue{}
 }
 
-func (ls *LState) getFieldString(obj LValue, key string) LValue {
+func (ls *LState) getField(obj LValue, key LValue) LValue {
+	tb, istable := obj.AsLTable()
+	if istable {
+		var ret LValue
+		if strkey, ok := key.AsLString(); ok {
+			ret = tb.RawGetString(string(strkey))
+		} else {
+			ret = tb.RawGet(key)
+		}
+		if !ret.EqualsLNil() {
+			return ret
+		}
+	}
+	return ls.getFieldSlow(obj, key, istable)
+}
+
+func (ls *LState) getFieldStringSlow(obj LValue, key string, istable bool) LValue {
+	var tb *LTable
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
-		tb, istable := curobj.AsLTable()
-		if istable {
-			ret := tb.RawGetString(key)
-			if !ret.Equals(LNil) {
-				return ret
-			}
-		}
 		metaindex := ls.metaOp1(curobj, "__index")
-		if metaindex.Equals(LNil) {
+		if metaindex.EqualsLNil() {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
@@ -1122,23 +1133,87 @@ func (ls *LState) getFieldString(obj LValue, key string) LValue {
 		} else {
 			curobj = metaindex
 		}
+		tb, istable = curobj.AsLTable()
+		if istable {
+			ret := tb.RawGetString(key)
+			if !ret.EqualsLNil() {
+				return ret
+			}
+		}
 	}
 	ls.RaiseError("too many recursions in gettable")
 	return LValue{}
 }
 
-func (ls *LState) setField(obj LValue, key LValue, value LValue) {
+func (ls *LState) getFieldString(obj LValue, key string) LValue {
+	tb, istable := obj.AsLTable()
+	if istable {
+		ret := tb.RawGetString(key)
+		if !ret.EqualsLNil() {
+			return ret
+		}
+	}
+	return ls.getFieldStringSlow(obj, key, istable)
+}
+
+func (ls *LState) deleteField(obj LValue, key LValue) {
 	curobj := obj
 	for i := 0; i < MaxTableGetLoop; i++ {
 		tb, istable := curobj.AsLTable()
 		if istable {
-			if !tb.RawGet(key).Equals(LNil) {
-				ls.RawSet(tb, key, value)
+			deleted := tb.rawDelete(key)
+			if deleted {
 				return
 			}
 		}
 		metaindex := ls.metaOp1(curobj, "__newindex")
-		if metaindex.Equals(LNil) {
+		if metaindex.EqualsLNil() {
+			if !istable {
+				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
+			}
+			return
+		}
+		if metaindex.Type() == LTFunction {
+			ls.reg.Push(metaindex)
+			ls.reg.Push(curobj)
+			ls.reg.Push(key)
+			ls.reg.Push(LNil)
+			ls.Call(3, 0)
+			return
+		} else {
+			curobj = metaindex
+		}
+	}
+	ls.RaiseError("too many recursions in settable")
+}
+
+func (ls *LState) setField(obj LValue, key LValue, value LValue) {
+	if value.EqualsLNil() {
+		ls.deleteField(obj, key)
+		return
+	}
+	tb, istable := obj.AsLTable()
+	if istable {
+		var setter *LValue
+		setter = tb.rawGetForSet(key)
+		if setter != nil && !setter.EqualsLNil() {
+			*setter = value
+			return
+		}
+	}
+	ls.setFieldSlow(obj, key, value)
+}
+
+func (ls *LState) setFieldSlow(obj LValue, key LValue, value LValue) {
+	if value.EqualsLNil() {
+		ls.deleteField(obj, key)
+		return
+	}
+	curobj := obj
+	tb, istable := curobj.AsLTable()
+	for i := 0; i < MaxTableGetLoop; i++ {
+		metaindex := ls.metaOp1(curobj, "__newindex")
+		if metaindex.EqualsLNil() {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
 			}
@@ -1155,22 +1230,38 @@ func (ls *LState) setField(obj LValue, key LValue, value LValue) {
 		} else {
 			curobj = metaindex
 		}
+		var setter *LValue
+		tb, istable = curobj.AsLTable()
+		if istable {
+			setter = tb.rawGetForSet(key)
+			if setter != nil && !setter.EqualsLNil() {
+				*setter = value
+				return
+			}
+		}
 	}
 	ls.RaiseError("too many recursions in settable")
 }
 
 func (ls *LState) setFieldString(obj LValue, key string, value LValue) {
+	if value.EqualsLNil() {
+		ls.deleteField(obj, LString(key).AsLValue())
+		return
+	}
 	curobj := obj
+	var vkey LValue = LString(key).AsLValue()
 	for i := 0; i < MaxTableGetLoop; i++ {
+		var setter *LValue
 		tb, istable := curobj.AsLTable()
 		if istable {
-			if !tb.RawGetString(key).Equals(LNil) {
-				tb.RawSetString(key, value)
+			setter = tb.rawGetForSet(vkey)
+			if setter != nil && !setter.EqualsLNil() {
+				*setter = value
 				return
 			}
 		}
 		metaindex := ls.metaOp1(curobj, "__newindex")
-		if metaindex.Equals(LNil) {
+		if metaindex.EqualsLNil() {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
@@ -1706,7 +1797,7 @@ func (ls *LState) GetTable(obj LValue, key LValue) LValue {
 func (ls *LState) RawSet(tb *LTable, key LValue, value LValue) {
 	if n, ok := key.AsLNumber(); ok && math.IsNaN(float64(n)) {
 		ls.RaiseError("table index is NaN")
-	} else if key.Equals(LNil) {
+	} else if key.EqualsLNil() {
 		ls.RaiseError("table index is nil")
 	}
 	tb.RawSet(key, value)

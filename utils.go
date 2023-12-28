@@ -171,7 +171,7 @@ func isGoroutineSafe(lv LValue) bool {
 	case LTFunction, LTUserData, LTThread:
 		return false
 	case LTTable:
-		return v.MustLTable().Metatable.Equals(LNil)
+		return v.MustLTable().Metatable.EqualsLNil()
 	default:
 		return true
 	}

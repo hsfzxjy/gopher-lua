@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"unsafe"
 )
 
@@ -36,7 +37,8 @@ type LValue struct {
 }
 
 func (lv LValue) asComparable() [2]uintptr {
-	return [2]uintptr{uintptr(lv.dataptr), lv.data}
+	return *(*[2]uintptr)(unsafe.Pointer(&lv))
+	// return [2]uintptr{uintptr(lv.dataptr), lv.data}
 }
 
 var (
@@ -83,13 +85,24 @@ func (lv LValue) IsEmpty() bool {
 }
 
 func (lv LValue) Equals(other LValue) bool {
-	if v1, ok1 := lv.AsLString(); !ok1 {
+	if v2, ok2 := other.AsLString(); !ok2 {
 		return lv.dataptr == other.dataptr && lv.data == other.data
-	} else if v2, ok2 := other.AsLString(); !ok2 {
+	} else if v1, ok1 := lv.AsLString(); !ok1 {
 		return false
 	} else {
 		return v1 == v2
 	}
+	// if v1, ok1 := lv.AsLString(); !ok1 {
+	// 	return lv.dataptr == other.dataptr && lv.data == other.data
+	// } else if v2, ok2 := other.AsLString(); !ok2 {
+	// 	return false
+	// } else {
+	// 	return v1 == v2
+	// }
+}
+
+func (lv LValue) EqualsLNil() bool {
+	return lv.dataptr == ltSentinelNil
 }
 
 func (lv LValue) String() string {
@@ -218,6 +231,10 @@ func (lv LValue) AsLBool() (LBool, bool) {
 	return LFalse, false
 }
 
+func (lv LValue) mustLNumberUnchecked() LNumber {
+	return LNumber(math.Float64frombits(uint64(lv.data)))
+}
+
 func (lv LValue) MustLNumber() LNumber {
 	if v, ok := lv.AsLNumber(); ok {
 		return v
@@ -230,6 +247,10 @@ func (lv LValue) AsLNumber() (LNumber, bool) {
 		return LNumber(math.Float64frombits(uint64(lv.data))), true
 	}
 	return LNumber(0), false
+}
+
+func (lv LValue) mustLStringUnchecked() LString {
+	return LString(unsafe.String((*byte)(lv.dataptr), int(lv.data)))
 }
 
 func (lv LValue) MustLString() LString {
@@ -422,9 +443,9 @@ func (st LString) Format(f fmt.State, c rune) {
 
 func (nm LNumber) String() string {
 	if isInteger(nm) {
-		return fmt.Sprint(int64(nm))
+		return strconv.FormatInt(int64(nm), 10)
 	}
-	return fmt.Sprint(float64(nm))
+	return strconv.FormatFloat(float64(nm), 'g', -1, 64)
 }
 
 func (nm LNumber) Type() LValueType { return LTNumber }

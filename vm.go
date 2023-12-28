@@ -661,7 +661,18 @@ func init() {
 			RA := lbase + A
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			L.setField(reg.Get(RA), L.rkValue(B), L.rkValue(C))
+			AObj := reg.Get(RA)
+			BObj := L.rkValue(B)
+			CObj := L.rkValue(C)
+			if tb, ok := AObj.AsLTable(); ok && (tb.Metatable.EqualsLNil() || tb.Metatable.IsEmpty()) {
+				if str, ok := BObj.AsLString(); ok {
+					tb.RawSetString(string(str), CObj)
+				} else {
+					L.RawSet(tb, BObj, CObj)
+				}
+			} else {
+				L.setField(AObj, BObj, CObj)
+			}
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETTABLEKS
@@ -2025,7 +2036,7 @@ func init() {
 				}
 			}
 			L.callR(2, nret, RA+3)
-			if value := reg.Get(RA + 3); !value.Equals(LNil) {
+			if value := reg.Get(RA + 3); !value.EqualsLNil() {
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
 				{

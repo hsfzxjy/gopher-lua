@@ -84,7 +84,7 @@ func loLoaderPreload(L *LState) int {
 		L.RaiseError("package.preload must be a table")
 	}
 	lv := L.GetField(preload, name)
-	if lv.Equals(LNil) {
+	if lv.EqualsLNil() {
 		L.Push(LString(fmt.Sprintf("no field package.preload['%s']", name)).AsLValue())
 		return 1
 	}
@@ -115,7 +115,7 @@ func loLoadLib(L *LState) int {
 func loSeeAll(L *LState) int {
 	mod := L.CheckTable(1)
 	mt := L.GetMetatable(mod.AsLValue())
-	if mt.Equals(LNil) {
+	if mt.EqualsLNil() {
 		mt = L.CreateTable(0, 1).AsLValue()
 		L.SetMetatable(mod.AsLValue(), mt)
 	}

@@ -137,7 +137,7 @@ func ipairsaux(L *LState) int {
 	i := L.CheckInt(2)
 	i++
 	v := tb.RawGetInt(i)
-	if v.Equals(LNil) {
+	if v.EqualsLNil() {
 		return 0
 	} else {
 		L.Pop(1)
@@ -177,7 +177,7 @@ func baseLoad(L *LState) int {
 		L.Push(fn.AsLValue())
 		L.Call(0, 1)
 		ret := L.reg.Pop()
-		if ret.Equals(LNil) {
+		if ret.EqualsLNil() {
 			break
 		} else if LVCanConvToString(ret) {
 			str := ret.String()
@@ -226,7 +226,7 @@ func baseNext(L *LState) int {
 		index = L.Get(2)
 	}
 	key, value := tb.Next(index)
-	if key.Equals(LNil) {
+	if key.EqualsLNil() {
 		L.Push(LNil)
 		return 1
 	}
@@ -238,7 +238,7 @@ func baseNext(L *LState) int {
 func pairsaux(L *LState) int {
 	tb := L.CheckTable(1)
 	key, value := tb.Next(L.Get(2))
-	if key.Equals(LNil) {
+	if key.EqualsLNil() {
 		return 0
 	} else {
 		L.Pop(1)
@@ -387,12 +387,12 @@ func baseSetFEnv(L *LState) int {
 func baseSetMetatable(L *LState) int {
 	L.CheckTypes(2, LTNil, LTTable)
 	obj := L.Get(1)
-	if obj.Equals(LNil) {
+	if obj.EqualsLNil() {
 		L.RaiseError("cannot set metatable to a nil object.")
 	}
 	mt := L.Get(2)
-	if m := L.metatable(obj, true); !m.Equals(LNil) {
-		if tb, ok := m.AsLTable(); ok && !tb.RawGetString("__metatable").Equals(LNil) {
+	if m := L.metatable(obj, true); !m.EqualsLNil() {
+		if tb, ok := m.AsLTable(); ok && !tb.RawGetString("__metatable").EqualsLNil() {
 			L.RaiseError("cannot change a protected metatable")
 		}
 	}
@@ -403,7 +403,7 @@ func baseSetMetatable(L *LState) int {
 
 func baseToNumber(L *LState) int {
 	base := L.OptInt(2, 10)
-	noBase := L.Get(2).Equals(LNil)
+	noBase := L.Get(2).EqualsLNil()
 
 	switch lv := L.CheckAny(1); lv.Type() {
 	case LTNumber:
@@ -487,12 +487,12 @@ func loModule(L *LState) int {
 	tb := L.GetField(loaded, name)
 	if _, ok := tb.AsLTable(); !ok {
 		tb = L.FindTable(L.Get(GlobalsIndex).MustLTable(), name, 1)
-		if tb.Equals(LNil) {
+		if tb.EqualsLNil() {
 			L.RaiseError("name conflict for module: %v", name)
 		}
 		L.SetField(loaded, name, tb)
 	}
-	if L.GetField(tb, "_NAME").Equals(LNil) {
+	if L.GetField(tb, "_NAME").EqualsLNil() {
 		L.SetField(tb, "_M", tb)
 		L.SetField(tb, "_NAME", LString(name).AsLValue())
 		names := strings.Split(name, ".")
@@ -542,7 +542,7 @@ func loRequire(L *LState) int {
 	var modasfunc LValue
 	for i := 1; ; i++ {
 		loader := L.RawGetInt(loaders, i)
-		if loader.Equals(LNil) {
+		if loader.EqualsLNil() {
 			L.RaiseError("module %s not found:\n\t%s, ", name, strings.Join(messages, "\n\t"))
 		}
 		L.Push(loader)
@@ -564,7 +564,7 @@ loopbreak:
 	L.Call(1, 1)
 	ret := L.reg.Pop()
 	modv := L.GetField(loaded, name)
-	if !ret.Equals(LNil) && modv.Equals(loopdetection.AsLValue()) {
+	if !ret.EqualsLNil() && modv.Equals(loopdetection.AsLValue()) {
 		L.SetField(loaded, name, ret)
 		L.Push(ret)
 	} else if modv.Equals(loopdetection.AsLValue()) {

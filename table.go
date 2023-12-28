@@ -57,7 +57,7 @@ func (tb *LTable) Len() int {
 	var prev LValue = LNil
 	for i := len(tb.array) - 1; i >= 0; i-- {
 		v := tb.array[i]
-		if prev.Equals(LNil) && !v.Equals(LNil) {
+		if prev.EqualsLNil() && !v.EqualsLNil() {
 			return i + 1
 		}
 		prev = v
@@ -67,18 +67,18 @@ func (tb *LTable) Len() int {
 
 // Append appends a given LValue to this LTable.
 func (tb *LTable) Append(value LValue) {
-	if value.Equals(LNil) {
+	if value.EqualsLNil() {
 		return
 	}
 	if tb.array == nil {
 		tb.array = make([]LValue, 0, defaultArrayCap)
 	}
-	if len(tb.array) == 0 || !tb.array[len(tb.array)-1].Equals(LNil) {
+	if len(tb.array) == 0 || !tb.array[len(tb.array)-1].EqualsLNil() {
 		tb.array = append(tb.array, value)
 	} else {
 		i := len(tb.array) - 2
 		for ; i >= 0; i-- {
-			if !tb.array[i].Equals(LNil) {
+			if !tb.array[i].EqualsLNil() {
 				break
 			}
 		}
@@ -111,7 +111,7 @@ func (tb *LTable) MaxN() int {
 		return 0
 	}
 	for i := len(tb.array) - 1; i >= 0; i-- {
-		if !tb.array[i].Equals(LNil) {
+		if !tb.array[i].EqualsLNil() {
 			return i + 1
 		}
 	}
@@ -150,7 +150,7 @@ func (tb *LTable) Remove(pos int) LValue {
 func (tb *LTable) RawSet(key LValue, value LValue) {
 	switch v := key; v.Type() {
 	case LTNumber:
-		v := v.MustLNumber()
+		v := v.mustLNumberUnchecked()
 		if isArrayKey(v) {
 			if tb.array == nil {
 				tb.array = make([]LValue, 0, defaultArrayCap)
@@ -171,7 +171,7 @@ func (tb *LTable) RawSet(key LValue, value LValue) {
 			return
 		}
 	case LTString:
-		v := v.MustLString()
+		v := v.mustLStringUnchecked()
 		tb.RawSetString(string(v), value)
 		return
 	}
@@ -210,7 +210,7 @@ func (tb *LTable) RawSetString(key string, value LValue) {
 	}
 
 	slot := tb.strdict[key]
-	if value.Equals(LNil) {
+	if value.EqualsLNil() {
 		delete(tb.strdict, key)
 		tb.slots.Release(slot)
 	} else if slot != nil {
@@ -232,7 +232,7 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 
 	ckey := key.asComparable()
 	slot := tb.dict[ckey]
-	if value.Equals(LNil) {
+	if value.EqualsLNil() {
 		delete(tb.dict, ckey)
 		tb.slots.Release(slot)
 	} else if slot != nil {
@@ -246,7 +246,7 @@ func (tb *LTable) RawSetH(key LValue, value LValue) {
 func (tb *LTable) RawGet(key LValue) LValue {
 	switch v := key; v.Type() {
 	case LTNumber:
-		v := v.MustLNumber()
+		v := v.mustLNumberUnchecked()
 		if isArrayKey(v) {
 			if tb.array == nil {
 				return LNil
@@ -258,7 +258,7 @@ func (tb *LTable) RawGet(key LValue) LValue {
 			return tb.array[index]
 		}
 	case LTString:
-		v := v.MustLString()
+		v := v.mustLStringUnchecked()
 		if tb.strdict == nil {
 			return LNil
 		}
@@ -274,6 +274,89 @@ func (tb *LTable) RawGet(key LValue) LValue {
 		return v.value
 	}
 	return LNil
+}
+
+func (tb *LTable) rawDelete(key LValue) (deleted bool) {
+	switch v := key; v.Type() {
+	case LTNumber:
+		v := v.mustLNumberUnchecked()
+		if isArrayKey(v) {
+			index := int(v) - 1
+			alen := len(tb.array)
+			if index < alen {
+				deleted = !tb.array[index].EqualsLNil()
+				tb.array[index] = LNil
+				return deleted
+			}
+			return false
+		}
+	case LTString:
+		v := v.mustLStringUnchecked()
+		return tb.rawDeleteString(string(v))
+	}
+	return tb.rawDeleteH(key)
+}
+
+func (tb *LTable) rawDeleteH(key LValue) (deleted bool) {
+	if tb.dict == nil {
+		return false
+	}
+	ckey := key.asComparable()
+	if slot, ok := tb.dict[ckey]; ok {
+		deleted = !slot.value.EqualsLNil()
+		slot.value = LNil
+		tb.slots.Release(slot)
+		delete(tb.dict, ckey)
+		return deleted
+	}
+	return false
+}
+
+func (tb *LTable) rawDeleteString(key string) (deleted bool) {
+	if tb.strdict == nil {
+		return false
+	}
+	if slot, ok := tb.strdict[key]; ok {
+		deleted = !slot.value.EqualsLNil()
+		slot.value = LNil
+		tb.slots.Release(slot)
+		delete(tb.strdict, key)
+		return deleted
+	}
+	return false
+}
+
+func (tb *LTable) rawGetForSet(key LValue) *LValue {
+	switch v := key; v.Type() {
+	case LTNumber:
+		v := v.mustLNumberUnchecked()
+		if isArrayKey(v) {
+			if tb.array == nil {
+				return nil
+			}
+			index := int(v) - 1
+			if index >= len(tb.array) {
+				return nil
+			}
+			return &tb.array[index]
+		}
+	case LTString:
+		v := v.mustLStringUnchecked()
+		if tb.strdict == nil {
+			return nil
+		}
+		if ret, ok := tb.strdict[string(v)]; ok {
+			return &ret.value
+		}
+		return nil
+	}
+	if tb.dict == nil {
+		return nil
+	}
+	if v, ok := tb.dict[key.asComparable()]; ok {
+		return &v.value
+	}
+	return nil
 }
 
 // RawGetInt returns an LValue at position `key` without __index metamethod.
@@ -323,7 +406,7 @@ func (tb *LTable) RawGetString(key string) LValue {
 func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 	if tb.array != nil {
 		for i, v := range tb.array {
-			if !v.Equals(LNil) {
+			if !v.EqualsLNil() {
 				cb(LNumber(i+1).AsLValue(), v)
 			}
 		}
@@ -338,7 +421,7 @@ func (tb *LTable) ForEach(cb func(LValue, LValue)) {
 // This function is equivalent to lua_next ( http://www.lua.org/manual/5.1/manual.html#lua_next ).
 func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	init := false
-	if key.Equals(LNil) {
+	if key.EqualsLNil() {
 		key = LNumber(0).AsLValue()
 		init = true
 	}
@@ -348,7 +431,7 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 			index := int(kv)
 			if tb.array != nil {
 				for ; index < len(tb.array); index++ {
-					if v := tb.array[index]; !v.Equals(LNil) {
+					if v := tb.array[index]; !v.EqualsLNil() {
 						return LNumber(index + 1).AsLValue(), v
 					}
 				}
