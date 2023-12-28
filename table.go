@@ -36,7 +36,7 @@ func newLTable(acap int, hcap int) *LTable {
 		hcap = 0
 	}
 	tb := &LTable{}
-	tb.Metatable = LNil
+	tb.Metatable = LValue{}
 	if acap != 0 {
 		tb.array = make([]LValue, 0, acap)
 	}
@@ -54,7 +54,7 @@ func (tb *LTable) Len() int {
 	if tb.array == nil {
 		return 0
 	}
-	var prev LValue = LNil
+	var prev LValue = LValue{}
 	for i := len(tb.array) - 1; i >= 0; i-- {
 		v := tb.array[i]
 		if prev.EqualsLNil() && !v.EqualsLNil() {
@@ -128,7 +128,7 @@ func (tb *LTable) Remove(pos int) LValue {
 		return LNil
 	}
 	i := pos - 1
-	oldval := LNil
+	oldval := LValue{}
 	switch {
 	case i >= larray:
 		// nothing to do
@@ -285,7 +285,7 @@ func (tb *LTable) rawDelete(key LValue) (deleted bool) {
 			alen := len(tb.array)
 			if index < alen {
 				deleted = !tb.array[index].EqualsLNil()
-				tb.array[index] = LNil
+				tb.array[index] = LValue{}
 				return deleted
 			}
 			return false
@@ -304,7 +304,7 @@ func (tb *LTable) rawDeleteH(key LValue) (deleted bool) {
 	ckey := key.asComparable()
 	if slot, ok := tb.dict[ckey]; ok {
 		deleted = !slot.value.EqualsLNil()
-		slot.value = LNil
+		slot.value = LValue{}
 		tb.slots.Release(slot)
 		delete(tb.dict, ckey)
 		return deleted
@@ -318,7 +318,7 @@ func (tb *LTable) rawDeleteString(key string) (deleted bool) {
 	}
 	if slot, ok := tb.strdict[key]; ok {
 		deleted = !slot.value.EqualsLNil()
-		slot.value = LNil
+		slot.value = LValue{}
 		tb.slots.Release(slot)
 		delete(tb.strdict, key)
 		return deleted

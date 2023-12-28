@@ -97,11 +97,11 @@ func channelSelect(L *LState) int {
 		return 0
 	}
 
-	lv := LNil
+	lv := LValue{}
 	if recv.Kind() != 0 {
 		lv, _ = recv.Interface().(LValue)
 		if lv.IsEmpty() {
-			lv = LNil
+			lv = LValue{}
 		}
 	}
 	tbl := L.Get(pos + 1).MustLTable()

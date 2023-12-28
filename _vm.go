@@ -321,7 +321,7 @@ func init() {
 			AObj := reg.Get(RA)
 			BObj := L.rkValue(B)
 			CObj := L.rkValue(C)
-			if tb, ok := AObj.AsLTable(); ok && (tb.Metatable.EqualsLNil() || tb.Metatable.IsEmpty()) {
+			if tb, ok := AObj.AsLTable(); ok && tb.Metatable.EqualsLNil() {
 				if str, ok := BObj.AsLString(); ok {
 					tb.RawSetString(string(str), CObj)
 				} else {

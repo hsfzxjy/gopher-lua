@@ -221,7 +221,7 @@ func baseLoadString(L *LState) int {
 
 func baseNext(L *LState) int {
 	tb := L.CheckTable(1)
-	index := LNil
+	index := LValue{}
 	if L.GetTop() >= 2 {
 		index = L.Get(2)
 	}

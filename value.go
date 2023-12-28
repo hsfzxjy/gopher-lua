@@ -102,7 +102,7 @@ func (lv LValue) Equals(other LValue) bool {
 }
 
 func (lv LValue) EqualsLNil() bool {
-	return lv.dataptr == ltSentinelNil
+	return lv.IsEmpty()
 }
 
 func (lv LValue) String() string {
@@ -182,7 +182,7 @@ func (lv LValue) AsLValue() LValue { return lv }
 
 func (lv LValue) Type() LValueType {
 	if lv.IsEmpty() {
-		return LTUnknown
+		return LTNil
 	}
 	if lv.dataptr == ltSentinelNumber {
 		return LTNumber
@@ -208,7 +208,7 @@ func (lv LValue) MustLNil() *LNilType {
 }
 
 func (lv LValue) AsLNil() (*LNilType, bool) {
-	if lv.dataptr == ltSentinelNil {
+	if lv.dataptr == nil && lv.data == 0 {
 		return LNilValue, true
 	}
 	return nil, false
@@ -350,10 +350,10 @@ func (lv LValue) AsLState() (*LState, bool) {
 }
 
 // LVIsFalse returns true if a given LValue is a nil or false otherwise false.
-func LVIsFalse(v LValue) bool { return v.dataptr == ltSentinelNil || v.dataptr == ltSentinelFalse }
+func LVIsFalse(v LValue) bool { return v.EqualsLNil() || v.dataptr == ltSentinelFalse }
 
 // LVIsFalse returns false if a given LValue is a nil or false otherwise true.
-func LVAsBool(v LValue) bool { return v.dataptr != ltSentinelNil && v.dataptr != ltSentinelFalse }
+func LVAsBool(v LValue) bool { return !v.EqualsLNil() && v.dataptr != ltSentinelFalse }
 
 // LVAsString returns string representation of a given LValue
 // if the LValue is a string or number, otherwise an empty string.
@@ -389,10 +389,10 @@ type LNilType struct{}
 
 func (nl *LNilType) String() string   { return "nil" }
 func (nl *LNilType) Type() LValueType { return LTNil }
-func (nl *LNilType) AsLValue() LValue { return LNil }
+func (nl *LNilType) AsLValue() LValue { return LValue{} }
 
 var LNilValue = new(LNilType)
-var LNil = LValue{dataptr: ltSentinelNil, data: maxUintptr + uintptr(LTNil)}
+var LNil = LValue{}
 
 type LBool bool
 

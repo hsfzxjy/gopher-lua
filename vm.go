@@ -90,7 +90,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 				}
 			}
 			for i := 0; i < n; i++ {
-				rg.array[regm+i] = LNil
+				rg.array[regm+i] = LValue{}
 			}
 			// values beyond top don't need to be valid LValues, so setting them to nil is fine
 			// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -124,7 +124,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			for i := 0; i < n; i++ {
 				srcIdx := start + i
 				if srcIdx >= limit || srcIdx < 0 {
-					rg.array[regv+i] = LNil
+					rg.array[regv+i] = LValue{}
 				} else {
 					rg.array[regv+i] = rg.array[srcIdx]
 				}
@@ -158,7 +158,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 					}
 				}
 				for i := 0; i < n; i++ {
-					rg.array[regm+i] = LNil
+					rg.array[regm+i] = LValue{}
 				}
 				// values beyond top don't need to be valid LValues, so setting them to nil is fine
 				// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -244,7 +244,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 		for i := 0; i < n; i++ {
 			srcIdx := start + i
 			if srcIdx >= limit || srcIdx < 0 {
-				rg.array[regv+i] = LNil
+				rg.array[regv+i] = LValue{}
 			} else {
 				rg.array[regv+i] = rg.array[srcIdx]
 			}
@@ -664,7 +664,7 @@ func init() {
 			AObj := reg.Get(RA)
 			BObj := L.rkValue(B)
 			CObj := L.rkValue(C)
-			if tb, ok := AObj.AsLTable(); ok && (tb.Metatable.EqualsLNil() || tb.Metatable.IsEmpty()) {
+			if tb, ok := AObj.AsLTable(); ok && tb.Metatable.EqualsLNil() {
 				if str, ok := BObj.AsLString(); ok {
 					tb.RawSetString(string(str), CObj)
 				} else {
@@ -938,7 +938,7 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					rg.array[regi] = rg.alloc.LNumber2I(vali)
+					rg.array[regi] = vali.AsLValue()
 					if regi >= rg.top {
 						rg.top = regi + 1
 					}
@@ -967,7 +967,7 @@ func init() {
 									rg.resize(requiredSize)
 								}
 							}
-							rg.array[regi] = rg.alloc.LNumber2I(vali)
+							rg.array[regi] = vali.AsLValue()
 							if regi >= rg.top {
 								rg.top = regi + 1
 							}
@@ -1010,7 +1010,7 @@ func init() {
 								rg.resize(requiredSize)
 							}
 						}
-						rg.array[regi] = rg.alloc.LNumber2I(vali)
+						rg.array[regi] = vali.AsLValue()
 						if regi >= rg.top {
 							rg.top = regi + 1
 						}
@@ -1242,7 +1242,7 @@ func init() {
 								}
 							}
 							for i := nargs; i < np; i++ {
-								ls.reg.array[cf.LocalBase+i] = LNil
+								ls.reg.array[cf.LocalBase+i] = LValue{}
 							}
 							nargs = np
 							ls.reg.top = newSize
@@ -1263,7 +1263,7 @@ func init() {
 								}
 							}
 							for i := np; i < nargs; i++ {
-								ls.reg.array[cf.LocalBase+i] = LNil
+								ls.reg.array[cf.LocalBase+i] = LValue{}
 							}
 							ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
 						} else {
@@ -1294,7 +1294,7 @@ func init() {
 								//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
 								ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
 								//ls.reg.Set(cf.LocalBase+i, LNil)
-								ls.reg.array[cf.LocalBase+i] = LNil
+								ls.reg.array[cf.LocalBase+i] = LValue{}
 							}
 
 							if CompatVarArg {
@@ -1308,7 +1308,7 @@ func init() {
 									//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
 									ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 								} else {
-									ls.reg.array[cf.LocalBase+nargs+np] = LNil
+									ls.reg.array[cf.LocalBase+nargs+np] = LValue{}
 								}
 							}
 							cf.LocalBase += nargs
@@ -1423,7 +1423,7 @@ func init() {
 								}
 							}
 							for i := nargs; i < np; i++ {
-								ls.reg.array[cf.LocalBase+i] = LNil
+								ls.reg.array[cf.LocalBase+i] = LValue{}
 							}
 							nargs = np
 							ls.reg.top = newSize
@@ -1444,7 +1444,7 @@ func init() {
 								}
 							}
 							for i := np; i < nargs; i++ {
-								ls.reg.array[cf.LocalBase+i] = LNil
+								ls.reg.array[cf.LocalBase+i] = LValue{}
 							}
 							ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
 						} else {
@@ -1475,7 +1475,7 @@ func init() {
 								//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
 								ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
 								//ls.reg.Set(cf.LocalBase+i, LNil)
-								ls.reg.array[cf.LocalBase+i] = LNil
+								ls.reg.array[cf.LocalBase+i] = LValue{}
 							}
 
 							if CompatVarArg {
@@ -1489,7 +1489,7 @@ func init() {
 									//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
 									ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 								} else {
-									ls.reg.array[cf.LocalBase+nargs+np] = LNil
+									ls.reg.array[cf.LocalBase+nargs+np] = LValue{}
 								}
 							}
 							cf.LocalBase += nargs
@@ -1521,7 +1521,7 @@ func init() {
 					for i := 0; i < n; i++ {
 						srcIdx := start + i
 						if srcIdx >= limit || srcIdx < 0 {
-							rg.array[regv+i] = LNil
+							rg.array[regv+i] = LValue{}
 						} else {
 							rg.array[regv+i] = rg.array[srcIdx]
 						}
@@ -1602,7 +1602,7 @@ func init() {
 								}
 							}
 							for i := 0; i < n; i++ {
-								rg.array[regm+i] = LNil
+								rg.array[regm+i] = LValue{}
 							}
 							// values beyond top don't need to be valid LValues, so setting them to nil is fine
 							// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -1636,7 +1636,7 @@ func init() {
 							for i := 0; i < n; i++ {
 								srcIdx := start + i
 								if srcIdx >= limit || srcIdx < 0 {
-									rg.array[regv+i] = LNil
+									rg.array[regv+i] = LValue{}
 								} else {
 									rg.array[regv+i] = rg.array[srcIdx]
 								}
@@ -1670,7 +1670,7 @@ func init() {
 									}
 								}
 								for i := 0; i < n; i++ {
-									rg.array[regm+i] = LNil
+									rg.array[regm+i] = LValue{}
 								}
 								// values beyond top don't need to be valid LValues, so setting them to nil is fine
 								// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -1712,7 +1712,7 @@ func init() {
 							}
 						}
 						for i := 0; i < n; i++ {
-							rg.array[regm+i] = LNil
+							rg.array[regm+i] = LValue{}
 						}
 						// values beyond top don't need to be valid LValues, so setting them to nil is fine
 						// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -1746,7 +1746,7 @@ func init() {
 						for i := 0; i < n; i++ {
 							srcIdx := start + i
 							if srcIdx >= limit || srcIdx < 0 {
-								rg.array[regv+i] = LNil
+								rg.array[regv+i] = LValue{}
 							} else {
 								rg.array[regv+i] = rg.array[srcIdx]
 							}
@@ -1780,7 +1780,7 @@ func init() {
 								}
 							}
 							for i := 0; i < n; i++ {
-								rg.array[regm+i] = LNil
+								rg.array[regm+i] = LValue{}
 							}
 							// values beyond top don't need to be valid LValues, so setting them to nil is fine
 							// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -1828,7 +1828,7 @@ func init() {
 									rg.resize(requiredSize)
 								}
 							}
-							rg.array[regi] = rg.alloc.LNumber2I(vali)
+							rg.array[regi] = vali.AsLValue()
 							if regi >= rg.top {
 								rg.top = regi + 1
 							}
@@ -1851,7 +1851,7 @@ func init() {
 										rg.resize(requiredSize)
 									}
 								}
-								rg.array[regi] = rg.alloc.LNumber2I(vali)
+								rg.array[regi] = vali.AsLValue()
 								if regi >= rg.top {
 									rg.top = regi + 1
 								}
@@ -1873,7 +1873,7 @@ func init() {
 								oldtopi := rg.top
 								rg.top = topi
 								for i := oldtopi; i < rg.top; i++ {
-									rg.array[i] = LNil
+									rg.array[i] = LValue{}
 								}
 								// values beyond top don't need to be valid LValues, so setting them to nil is fine
 								// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -1884,7 +1884,7 @@ func init() {
 									}
 								}
 								//for i := rg.top; i < oldtop; i++ {
-								//	rg.array[i] = LNil
+								//	rg.array[i] = LValue{}
 								//}
 							}
 						}
@@ -1923,7 +1923,7 @@ func init() {
 								rg.resize(requiredSize)
 							}
 						}
-						rg.array[regi] = rg.alloc.LNumber2I(vali)
+						rg.array[regi] = vali.AsLValue()
 						if regi >= rg.top {
 							rg.top = regi + 1
 						}
@@ -1961,7 +1961,7 @@ func init() {
 				oldtopi := rg.top
 				rg.top = topi
 				for i := oldtopi; i < rg.top; i++ {
-					rg.array[i] = LNil
+					rg.array[i] = LValue{}
 				}
 				// values beyond top don't need to be valid LValues, so setting them to nil is fine
 				// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -1972,7 +1972,7 @@ func init() {
 					}
 				}
 				//for i := rg.top; i < oldtop; i++ {
-				//	rg.array[i] = LNil
+				//	rg.array[i] = LValue{}
 				//}
 			}
 			// this section is inlined by go-inline
@@ -2194,7 +2194,7 @@ func init() {
 				for i := 0; i < n; i++ {
 					srcIdx := start + i
 					if srcIdx >= limit || srcIdx < 0 {
-						rg.array[regv+i] = LNil
+						rg.array[regv+i] = LValue{}
 					} else {
 						rg.array[regv+i] = rg.array[srcIdx]
 					}
@@ -2249,7 +2249,7 @@ func opArith(L *LState, inst uint32, baseframe *callFrame) int { //OP_ADD, OP_SU
 					rg.resize(requiredSize)
 				}
 			}
-			rg.array[regi] = rg.alloc.LNumber2I(vali)
+			rg.array[regi] = vali.AsLValue()
 			if regi >= rg.top {
 				rg.top = regi + 1
 			}

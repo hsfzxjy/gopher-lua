@@ -416,7 +416,7 @@ func (rg *registry) SetTop(topi int) { // +inline-start
 	oldtopi := rg.top
 	rg.top = topi
 	for i := oldtopi; i < rg.top; i++ {
-		rg.array[i] = LNil
+		rg.array[i] = LValue{}
 	}
 	// values beyond top don't need to be valid LValues, so setting them to nil is fine
 	// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -427,7 +427,7 @@ func (rg *registry) SetTop(topi int) { // +inline-start
 		}
 	}
 	//for i := rg.top; i < oldtop; i++ {
-	//	rg.array[i] = LNil
+	//	rg.array[i] = LValue{}
 	//}
 } // +inline-end
 
@@ -451,7 +451,7 @@ func (rg *registry) Push(v LValue) {
 
 func (rg *registry) Pop() LValue {
 	v := rg.array[rg.top-1]
-	rg.array[rg.top-1] = LNil
+	rg.array[rg.top-1] = LValue{}
 	rg.top--
 	return v
 }
@@ -485,7 +485,7 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	for i := 0; i < n; i++ {
 		srcIdx := start + i
 		if srcIdx >= limit || srcIdx < 0 {
-			rg.array[regv+i] = LNil
+			rg.array[regv+i] = LValue{}
 		} else {
 			rg.array[regv+i] = rg.array[srcIdx]
 		}
@@ -515,7 +515,7 @@ func (rg *registry) FillNil(regm, n int) { // +inline-start
 		}
 	}
 	for i := 0; i < n; i++ {
-		rg.array[regm+i] = LNil
+		rg.array[regm+i] = LValue{}
 	}
 	// values beyond top don't need to be valid LValues, so setting them to nil is fine
 	// setting them to nil rather than LNil lets us invoke the golang memclr opto
@@ -623,7 +623,7 @@ func (rg *registry) SetNumber(regi int, vali LNumber) { // +inline-start
 			rg.resize(requiredSize)
 		}
 	}
-	rg.array[regi] = rg.alloc.LNumber2I(vali)
+	rg.array[regi] = vali.AsLValue()
 	if regi >= rg.top {
 		rg.top = regi + 1
 	}
@@ -976,7 +976,7 @@ func (ls *LState) findUpvalue(idx int) *Upvalue {
 }
 
 func (ls *LState) metatable(lvalue LValue, rawget bool) LValue {
-	var metatable LValue = LNil
+	var metatable LValue = LValue{}
 	switch typ := lvalue.Type(); typ {
 	case LTTable:
 		metatable = lvalue.MustLTable().Metatable
@@ -1058,7 +1058,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 				}
 			}
 			for i := nargs; i < np; i++ {
-				ls.reg.array[cf.LocalBase+i] = LNil
+				ls.reg.array[cf.LocalBase+i] = LValue{}
 			}
 			nargs = np
 			ls.reg.top = newSize
@@ -1079,7 +1079,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 				}
 			}
 			for i := np; i < nargs; i++ {
-				ls.reg.array[cf.LocalBase+i] = LNil
+				ls.reg.array[cf.LocalBase+i] = LValue{}
 			}
 			ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
 		} else {
@@ -1110,7 +1110,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 				//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
 				ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
 				//ls.reg.Set(cf.LocalBase+i, LNil)
-				ls.reg.array[cf.LocalBase+i] = LNil
+				ls.reg.array[cf.LocalBase+i] = LValue{}
 			}
 
 			if CompatVarArg {
@@ -1124,7 +1124,7 @@ func (ls *LState) initCallFrame(cf *callFrame) { // +inline-start
 					//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
 					ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 				} else {
-					ls.reg.array[cf.LocalBase+nargs+np] = LNil
+					ls.reg.array[cf.LocalBase+nargs+np] = LValue{}
 				}
 			}
 			cf.LocalBase += nargs
@@ -1170,7 +1170,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 					}
 				}
 				for i := nargs; i < np; i++ {
-					ls.reg.array[cf.LocalBase+i] = LNil
+					ls.reg.array[cf.LocalBase+i] = LValue{}
 				}
 				nargs = np
 				ls.reg.top = newSize
@@ -1191,7 +1191,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 					}
 				}
 				for i := np; i < nargs; i++ {
-					ls.reg.array[cf.LocalBase+i] = LNil
+					ls.reg.array[cf.LocalBase+i] = LValue{}
 				}
 				ls.reg.top = cf.LocalBase + int(proto.NumUsedRegisters)
 			} else {
@@ -1222,7 +1222,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 					//ls.reg.Set(cf.LocalBase+nargs+i, ls.reg.Get(cf.LocalBase+i))
 					ls.reg.array[cf.LocalBase+nargs+i] = ls.reg.array[cf.LocalBase+i]
 					//ls.reg.Set(cf.LocalBase+i, LNil)
-					ls.reg.array[cf.LocalBase+i] = LNil
+					ls.reg.array[cf.LocalBase+i] = LValue{}
 				}
 
 				if CompatVarArg {
@@ -1236,7 +1236,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 						//ls.reg.Set(cf.LocalBase+nargs+np, argtb)
 						ls.reg.array[cf.LocalBase+nargs+np] = argtb.AsLValue()
 					} else {
-						ls.reg.array[cf.LocalBase+nargs+np] = LNil
+						ls.reg.array[cf.LocalBase+nargs+np] = LValue{}
 					}
 				}
 				cf.LocalBase += nargs
