@@ -639,7 +639,7 @@ type LState struct {
 
 	stop         int32
 	reg          *registry
-	stack        callFrameStack
+	stack        *autoGrowingCallFrameStack
 	alloc        *allocator
 	currentFrame *callFrame
 	wrapped      bool

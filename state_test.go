@@ -21,7 +21,7 @@ func TestCallStackOverflowWhenFixed(t *testing.T) {
 
 	// expect fixed stack implementation by default (for backwards compatibility)
 	stack := L.stack
-	if _, ok := stack.(*fixedCallFrameStack); !ok {
+	if stack.autoGrow {
 		t.Errorf("expected fixed callframe stack by default")
 	}
 
@@ -48,7 +48,7 @@ func TestCallStackOverflowWhenAutoGrow(t *testing.T) {
 
 	// expect auto growing stack implementation when MinimizeStackMemory is set
 	stack := L.stack
-	if _, ok := stack.(*autoGrowingCallFrameStack); !ok {
+	if !stack.autoGrow {
 		t.Errorf("expected fixed callframe stack by default")
 	}
 
@@ -581,7 +581,7 @@ func TestUninitializedVarAccess(t *testing.T) {
 }
 
 func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256)
+	stack := newAutoGrowingCallFrameStack(256, true)
 
 	t.ResetTimer()
 
@@ -614,7 +614,7 @@ func BenchmarkCallFrameStackPushPopFixed(t *testing.B) {
 
 // this test will intentionally not incur stack growth in order to bench the performance when no allocations happen
 func BenchmarkCallFrameStackPushPopShallowAutoGrow(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256)
+	stack := newAutoGrowingCallFrameStack(256, true)
 
 	t.ResetTimer()
 
@@ -662,7 +662,7 @@ func BenchmarkCallFrameStackPushPopFixedNoInterface(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackUnwindAutoGrow(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256)
+	stack := newAutoGrowingCallFrameStack(256, true)
 
 	t.ResetTimer()
 

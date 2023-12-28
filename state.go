@@ -158,6 +158,7 @@ type callFrameStack interface {
 	FreeAll()
 }
 
+// Deprecated: merge into autoGrowingCallFrameStack
 type fixedCallFrameStack struct {
 	array []callFrame
 	sp    int
@@ -228,6 +229,10 @@ type autoGrowingCallFrameStack struct {
 	// It points to the next stack slot to use, so 0 means to use the 0th element in the segment, and a value of
 	// FramesPerSegment indicates that the segment is full and cannot accommodate another frame.
 	segSp uint8
+
+	autoGrow bool
+	array    []callFrame
+	sp       int
 }
 
 var segmentPool sync.Pool
@@ -247,25 +252,39 @@ func freeCallFrameStackSegment(seg *callFrameStackSegment) {
 // newCallFrameStack allocates a new stack for a lua state, which will auto grow up to a max size of at least maxSize.
 // it will actually grow up to the next segment size multiple after maxSize, where the segment size is dictated by
 // FramesPerSegment.
-func newAutoGrowingCallFrameStack(maxSize int) callFrameStack {
-	cs := &autoGrowingCallFrameStack{
-		segments: make([]*callFrameStackSegment, (maxSize+(FramesPerSegment-1))/FramesPerSegment),
-		segIdx:   0,
+func newAutoGrowingCallFrameStack(maxSize int, autoGrow bool) *autoGrowingCallFrameStack {
+	cs := &autoGrowingCallFrameStack{autoGrow: autoGrow}
+	if autoGrow {
+		cs.segments = make([]*callFrameStackSegment, (maxSize+(FramesPerSegment-1))/FramesPerSegment)
+		cs.segIdx = 0
+		cs.segments[0] = newCallFrameStackSegment()
+	} else {
+		cs.array = make([]callFrame, maxSize)
+		cs.sp = 0
 	}
-	cs.segments[0] = newCallFrameStackSegment()
 	return cs
 }
 
 func (cs *autoGrowingCallFrameStack) IsEmpty() bool {
+	if !cs.autoGrow {
+		return cs.sp == 0
+	}
 	return cs.segIdx == 0 && cs.segSp == 0
 }
 
 // IsFull returns true if the stack cannot receive any more stack pushes without overflowing
 func (cs *autoGrowingCallFrameStack) IsFull() bool {
+	if !cs.autoGrow {
+		return cs.sp == len(cs.array)
+	}
 	return int(cs.segIdx) == len(cs.segments) && cs.segSp >= FramesPerSegment
 }
 
 func (cs *autoGrowingCallFrameStack) Clear() {
+	if !cs.autoGrow {
+		cs.sp = 0
+		return
+	}
 	for i := segIdx(1); i <= cs.segIdx; i++ {
 		freeCallFrameStackSegment(cs.segments[i])
 		cs.segments[i] = nil
@@ -275,6 +294,10 @@ func (cs *autoGrowingCallFrameStack) Clear() {
 }
 
 func (cs *autoGrowingCallFrameStack) FreeAll() {
+	if !cs.autoGrow {
+		// noop
+		return
+	}
 	for i := segIdx(0); i <= cs.segIdx; i++ {
 		freeCallFrameStackSegment(cs.segments[i])
 		cs.segments[i] = nil
@@ -284,6 +307,12 @@ func (cs *autoGrowingCallFrameStack) FreeAll() {
 // Push pushes the passed callFrame onto the stack. it panics if the stack is full, caller should call IsFull() before
 // invoking this to avoid this.
 func (cs *autoGrowingCallFrameStack) Push(v callFrame) {
+	if !cs.autoGrow {
+		cs.array[cs.sp] = v
+		cs.array[cs.sp].Idx = cs.sp
+		cs.sp++
+		return
+	}
 	curSeg := cs.segments[cs.segIdx]
 	if cs.segSp >= FramesPerSegment {
 		// segment full, push new segment if allowed
@@ -303,12 +332,19 @@ func (cs *autoGrowingCallFrameStack) Push(v callFrame) {
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
 func (cs *autoGrowingCallFrameStack) Sp() int {
+	if !cs.autoGrow {
+		return cs.sp
+	}
 	return int(cs.segSp) + int(cs.segIdx)*FramesPerSegment
 }
 
 // SetSp can be used to rapidly unwind the stack, freeing all stack frames on the way. It should not be used to
 // allocate new stack space, use Push() for that.
 func (cs *autoGrowingCallFrameStack) SetSp(sp int) {
+	if !cs.autoGrow {
+		cs.sp = sp
+		return
+	}
 	desiredSegIdx := segIdx(sp / FramesPerSegment)
 	desiredFramesInLastSeg := uint8(sp % FramesPerSegment)
 	for {
@@ -323,6 +359,12 @@ func (cs *autoGrowingCallFrameStack) SetSp(sp int) {
 }
 
 func (cs *autoGrowingCallFrameStack) Last() *callFrame {
+	if !cs.autoGrow {
+		if cs.sp == 0 {
+			return nil
+		}
+		return &cs.array[cs.sp-1]
+	}
 	curSeg := cs.segments[cs.segIdx]
 	segSp := cs.segSp
 	if segSp == 0 {
@@ -336,6 +378,9 @@ func (cs *autoGrowingCallFrameStack) Last() *callFrame {
 }
 
 func (cs *autoGrowingCallFrameStack) At(sp int) *callFrame {
+	if !cs.autoGrow {
+		return &cs.array[sp]
+	}
 	segIdx := segIdx(sp / FramesPerSegment)
 	frameIdx := uint8(sp % FramesPerSegment)
 	return &cs.segments[segIdx].array[frameIdx]
@@ -343,6 +388,10 @@ func (cs *autoGrowingCallFrameStack) At(sp int) *callFrame {
 
 // Pop pops off the most recent stack frame and returns it
 func (cs *autoGrowingCallFrameStack) Pop() *callFrame {
+	if !cs.autoGrow {
+		cs.sp--
+		return &cs.array[cs.sp]
+	}
 	curSeg := cs.segments[cs.segIdx]
 	if cs.segSp == 0 {
 		if cs.segIdx == 0 {
@@ -681,9 +730,9 @@ func newLState(options Options) *LState {
 		ctx:          nil,
 	}
 	if options.MinimizeStackMemory {
-		ls.stack = newAutoGrowingCallFrameStack(options.CallStackSize)
+		ls.stack = newAutoGrowingCallFrameStack(options.CallStackSize, true)
 	} else {
-		ls.stack = newFixedCallFrameStack(options.CallStackSize)
+		ls.stack = newAutoGrowingCallFrameStack(options.CallStackSize, false)
 	}
 	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
 	ls.Env = ls.G.Global
