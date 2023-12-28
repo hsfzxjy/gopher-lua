@@ -121,11 +121,11 @@ func (tb *LTable) MaxN() int {
 // Remove removes from this table the element at a given position.
 func (tb *LTable) Remove(pos int) LValue {
 	if tb.array == nil {
-		return LNil
+		return LValue{}
 	}
 	larray := len(tb.array)
 	if larray == 0 {
-		return LNil
+		return LValue{}
 	}
 	i := pos - 1
 	oldval := LValue{}
@@ -249,31 +249,31 @@ func (tb *LTable) RawGet(key LValue) LValue {
 		v := v.mustLNumberUnchecked()
 		if isArrayKey(v) {
 			if tb.array == nil {
-				return LNil
+				return LValue{}
 			}
 			index := int(v) - 1
 			if index >= len(tb.array) {
-				return LNil
+				return LValue{}
 			}
 			return tb.array[index]
 		}
 	case LTString:
 		v := v.mustLStringUnchecked()
 		if tb.strdict == nil {
-			return LNil
+			return LValue{}
 		}
 		if ret, ok := tb.strdict[string(v)]; ok {
 			return ret.value
 		}
-		return LNil
+		return LValue{}
 	}
 	if tb.dict == nil {
-		return LNil
+		return LValue{}
 	}
 	if v, ok := tb.dict[key.asComparable()]; ok {
 		return v.value
 	}
-	return LNil
+	return LValue{}
 }
 
 func (tb *LTable) rawDelete(key LValue) (deleted bool) {
@@ -362,11 +362,11 @@ func (tb *LTable) rawGetForSet(key LValue) *LValue {
 // RawGetInt returns an LValue at position `key` without __index metamethod.
 func (tb *LTable) RawGetInt(key int) LValue {
 	if tb.array == nil {
-		return LNil
+		return LValue{}
 	}
 	index := int(key) - 1
 	if index >= len(tb.array) || index < 0 {
-		return LNil
+		return LValue{}
 	}
 	return tb.array[index]
 }
@@ -375,31 +375,31 @@ func (tb *LTable) RawGetInt(key int) LValue {
 func (tb *LTable) RawGetH(key LValue) LValue {
 	if s, sok := key.AsLString(); sok {
 		if tb.strdict == nil {
-			return LNil
+			return LValue{}
 		}
 		if v, vok := tb.strdict[string(s)]; vok {
 			return v.value
 		}
-		return LNil
+		return LValue{}
 	}
 	if tb.dict == nil {
-		return LNil
+		return LValue{}
 	}
 	if v, ok := tb.dict[key.asComparable()]; ok {
 		return v.value
 	}
-	return LNil
+	return LValue{}
 }
 
 // RawGetString returns an LValue associated with a given key without __index metamethod.
 func (tb *LTable) RawGetString(key string) LValue {
 	if tb.strdict == nil {
-		return LNil
+		return LValue{}
 	}
 	if v, vok := tb.strdict[string(key)]; vok {
 		return v.value
 	}
-	return LNil
+	return LValue{}
 }
 
 // ForEach iterates over this table of elements, yielding each in turn to a given function.
@@ -438,7 +438,7 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 			}
 			if tb.array == nil || index == len(tb.array) {
 				if tb.slots.start == nil {
-					return LNil, LNil
+					return LValue{}, LValue{}
 				}
 				return tb.slots.start.key, tb.slots.start.value
 			}
@@ -455,7 +455,7 @@ func (tb *LTable) Next(key LValue) (LValue, LValue) {
 	}
 
 	if slot == nil || slot.next == nil {
-		return LNil, LNil
+		return LValue{}, LValue{}
 	}
 
 	return slot.next.key, slot.next.value

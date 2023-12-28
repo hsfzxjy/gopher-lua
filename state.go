@@ -1058,7 +1058,7 @@ func (ls *LState) metaOp1(lvalue LValue, event string) LValue {
 			return tb.RawGetString(event)
 		}
 	}
-	return LNil
+	return LValue{}
 }
 
 func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
@@ -1074,7 +1074,7 @@ func (ls *LState) metaOp2(value1, value2 LValue, event string) LValue {
 			return tb.RawGetString(event)
 		}
 	}
-	return LNil
+	return LValue{}
 }
 
 func (ls *LState) metaCall(lvalue LValue) (*LFunction, bool) {
@@ -1336,7 +1336,7 @@ func (ls *LState) getFieldSlow(obj LValue, key LValue, istable bool) LValue {
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key.String())
 			}
-			return LNil
+			return LValue{}
 		}
 		if metaindex.Type() == LTFunction {
 			ls.reg.Push(metaindex)
@@ -1384,7 +1384,7 @@ func (ls *LState) getFieldStringSlow(obj LValue, key string, istable bool) LValu
 			if !istable {
 				ls.RaiseError("attempt to index a non-table object(%v) with key '%s'", curobj.Type().String(), key)
 			}
-			return LNil
+			return LValue{}
 		}
 		if metaindex.Type() == LTFunction {
 			ls.reg.Push(metaindex)
@@ -1662,13 +1662,13 @@ func (ls *LState) Get(idx int) LValue {
 		if reg < ls.reg.Top() {
 			return ls.reg.Get(reg)
 		}
-		return LNil
+		return LValue{}
 	} else if idx == 0 {
-		return LNil
+		return LValue{}
 	} else if idx > RegistryIndex {
 		tidx := ls.reg.Top() + idx
 		if tidx < base {
-			return LNil
+			return LValue{}
 		}
 		return ls.reg.Get(tidx)
 	} else {
@@ -1688,7 +1688,7 @@ func (ls *LState) Get(idx int) LValue {
 			if index < len(fn.Upvalues) {
 				return fn.Upvalues[index].Value()
 			}
-			return LNil
+			return LValue{}
 		}
 	}
 }
@@ -1895,7 +1895,7 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 	}
 	f, ok := fn.AsLFunction()
 	if !ok {
-		return LNil, newApiErrorS(ApiErrorRun, "can not get debug info(an object in not a function)")
+		return LValue{}, newApiErrorS(ApiErrorRun, "can not get debug info(an object in not a function)")
 	}
 
 	retfn := false
@@ -1933,14 +1933,14 @@ func (ls *LState) GetInfo(what string, dbg *Debug, fn LValue) (LValue, error) {
 				dbg.Name = ls.rawFrameFuncName(dbg.frame)
 			}
 		default:
-			return LNil, newApiErrorS(ApiErrorRun, "invalid what: "+string(c))
+			return LValue{}, newApiErrorS(ApiErrorRun, "invalid what: "+string(c))
 		}
 	}
 
 	if retfn {
 		return f.AsLValue(), nil
 	}
-	return LNil, nil
+	return LValue{}, nil
 
 }
 
@@ -2016,7 +2016,7 @@ func (ls *LState) GetFEnv(obj LValue) LValue {
 	case LTThread:
 		return lv.MustLState().Env.AsLValue()
 	}
-	return LNil
+	return LValue{}
 }
 
 func (ls *LState) SetFEnv(obj LValue, env LValue) {

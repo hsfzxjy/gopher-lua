@@ -2352,7 +2352,7 @@ func objectArith(L *LState, opcode int, lhs, rhs LValue) LValue {
 	L.RaiseError(fmt.Sprintf("cannot perform %v operation between %v and %v",
 		strings.TrimLeft(event, "_"), lhs.Type().String(), rhs.Type().String()))
 
-	return LNil
+	return LValue{}
 }
 
 func stringConcat(L *LState, total, last int) LValue {
@@ -2372,7 +2372,7 @@ func stringConcat(L *LState, total, last int) LValue {
 				i--
 			} else {
 				L.RaiseError("cannot perform concat operation between %v and %v", lhs.Type().String(), rhs.Type().String())
-				return LNil
+				return LValue{}
 			}
 		} else {
 			buf := make([]string, total+1)

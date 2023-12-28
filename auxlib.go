@@ -267,7 +267,7 @@ func (ls *LState) FindTable(obj *LTable, n string, size int) LValue {
 	curobj := obj
 	for _, name := range names {
 		if curobj.Type() != LTTable {
-			return LNil
+			return LValue{}
 		}
 		nextobj := ls.RawGet(curobj, LString(name).AsLValue())
 		if nextobj.EqualsLNil() {
@@ -275,7 +275,7 @@ func (ls *LState) FindTable(obj *LTable, n string, size int) LValue {
 			ls.RawSet(curobj, LString(name).AsLValue(), tb.AsLValue())
 			curobj = tb
 		} else if nextobj.Type() != LTTable {
-			return LNil
+			return LValue{}
 		} else {
 			curobj = nextobj.MustLTable()
 		}
@@ -343,7 +343,7 @@ func (ls *LState) CallMeta(obj LValue, event string) LValue {
 		ls.Call(1, 1)
 		return ls.reg.Pop()
 	}
-	return LNil
+	return LValue{}
 }
 
 /* }}} */
