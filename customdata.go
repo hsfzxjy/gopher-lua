@@ -14,7 +14,7 @@ func (h *CustomDataHelper[T]) AsLValue(raw *T) LValue {
 }
 
 func (h *CustomDataHelper[T]) As(lv LValue) (*T, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.data != uintptr(h.entry.typ)+maxUintptr {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.data != uintptr(h.entry.typ)+maxUintptr {
 		return nil, false
 	}
 	return (*T)(lv.dataptr), true

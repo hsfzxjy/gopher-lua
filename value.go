@@ -42,11 +42,9 @@ func (lv LValue) asComparable() [2]uintptr {
 }
 
 var (
-	ltSentinels      = [4]int{}
-	ltSentinelNumber = unsafe.Pointer(&ltSentinels[0])
-	ltSentinelTrue   = unsafe.Pointer(&ltSentinels[1])
-	ltSentinelFalse  = unsafe.Pointer(&ltSentinels[2])
-	ltSentinelNil    = unsafe.Pointer(&ltSentinels[3])
+	ltSentinelNumber byte
+	ltSentinelTrue   byte
+	ltSentinelFalse  byte
 )
 
 const maxUintptr = ^uintptr(0)>>1 + 1
@@ -184,7 +182,7 @@ func (lv LValue) Type() LValueType {
 	if lv.IsEmpty() {
 		return LTNil
 	}
-	if lv.dataptr == ltSentinelNumber {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) {
 		return LTNumber
 	}
 	if lv.data&maxUintptr == 0 {
@@ -222,10 +220,10 @@ func (lv LValue) MustLBool() LBool {
 }
 
 func (lv LValue) AsLBool() (LBool, bool) {
-	if lv.dataptr == ltSentinelTrue {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelTrue) {
 		return LTrue, true
 	}
-	if lv.dataptr == ltSentinelFalse {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelFalse) {
 		return LFalse, true
 	}
 	return LFalse, false
@@ -243,7 +241,7 @@ func (lv LValue) MustLNumber() LNumber {
 }
 
 func (lv LValue) AsLNumber() (LNumber, bool) {
-	if lv.dataptr == ltSentinelNumber {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) {
 		return LNumber(math.Float64frombits(uint64(lv.data))), true
 	}
 	return LNumber(0), false
@@ -261,7 +259,7 @@ func (lv LValue) MustLString() LString {
 }
 
 func (lv LValue) AsLString() (LString, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.IsEmpty() {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.IsEmpty() {
 		return "", false
 	}
 	if lv.data&maxUintptr == 0 {
@@ -279,7 +277,7 @@ func (lv LValue) MustLTable() *LTable {
 }
 
 func (lv LValue) AsLTable() (*LTable, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTTable) {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.data != maxUintptr+uintptr(LTTable) {
 		return nil, false
 	}
 	return (*LTable)(lv.dataptr), true
@@ -293,7 +291,7 @@ func (lv LValue) MustLFunction() *LFunction {
 }
 
 func (lv LValue) AsLFunction() (*LFunction, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTFunction) {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.data != maxUintptr+uintptr(LTFunction) {
 		return nil, false
 	}
 	return (*LFunction)(lv.dataptr), true
@@ -307,7 +305,7 @@ func (lv LValue) MustLUserData() *LUserData {
 }
 
 func (lv LValue) AsLUserData() (*LUserData, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTUserData) {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.data != maxUintptr+uintptr(LTUserData) {
 		return nil, false
 	}
 	return (*LUserData)(lv.dataptr), true
@@ -321,7 +319,7 @@ func (lv LValue) MustLChannel() LChannel {
 }
 
 func (lv LValue) AsLChannel() (LChannel, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTChannel) {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.data != maxUintptr+uintptr(LTChannel) {
 		return nil, false
 	}
 	return *(*LChannel)(unsafe.Pointer(&lv.dataptr)), true
@@ -335,7 +333,7 @@ func (lv LValue) MustLThread() *LState {
 }
 
 func (lv LValue) AsLThread() (*LState, bool) {
-	if lv.dataptr == ltSentinelNumber || lv.data != maxUintptr+uintptr(LTThread) {
+	if lv.dataptr == unsafe.Pointer(&ltSentinelNumber) || lv.data != maxUintptr+uintptr(LTThread) {
 		return nil, false
 	}
 	return (*LState)(lv.dataptr), true
@@ -350,10 +348,10 @@ func (lv LValue) AsLState() (*LState, bool) {
 }
 
 // LVIsFalse returns true if a given LValue is a nil or false otherwise false.
-func LVIsFalse(v LValue) bool { return v.EqualsLNil() || v.dataptr == ltSentinelFalse }
+func LVIsFalse(v LValue) bool { return v.EqualsLNil() || v.dataptr == unsafe.Pointer(&ltSentinelFalse) }
 
 // LVIsFalse returns false if a given LValue is a nil or false otherwise true.
-func LVAsBool(v LValue) bool { return !v.EqualsLNil() && v.dataptr != ltSentinelFalse }
+func LVAsBool(v LValue) bool { return !v.EqualsLNil() && v.dataptr != unsafe.Pointer(&ltSentinelFalse) }
 
 // LVAsString returns string representation of a given LValue
 // if the LValue is a string or number, otherwise an empty string.
@@ -405,9 +403,9 @@ func (bl LBool) String() string {
 func (bl LBool) Type() LValueType { return LTBool }
 func (bl LBool) AsLValue() LValue {
 	if bool(bl) {
-		return LValue{dataptr: ltSentinelTrue, data: maxUintptr + uintptr(LTBool)}
+		return LValue{dataptr: unsafe.Pointer(&ltSentinelTrue), data: maxUintptr + uintptr(LTBool)}
 	} else {
-		return LValue{dataptr: ltSentinelFalse, data: maxUintptr + uintptr(LTBool)}
+		return LValue{dataptr: unsafe.Pointer(&ltSentinelFalse), data: maxUintptr + uintptr(LTBool)}
 	}
 }
 
@@ -450,7 +448,7 @@ func (nm LNumber) String() string {
 
 func (nm LNumber) Type() LValueType { return LTNumber }
 func (nm LNumber) AsLValue() LValue {
-	return LValue{dataptr: ltSentinelNumber, data: uintptr(math.Float64bits(float64(nm)))}
+	return LValue{dataptr: unsafe.Pointer(&ltSentinelNumber), data: uintptr(math.Float64bits(float64(nm)))}
 }
 
 // fmt.Formatter interface
