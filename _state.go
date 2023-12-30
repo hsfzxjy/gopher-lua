@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/hsfzxjy/gopher-lua/parse"
 )
@@ -127,9 +128,9 @@ type Debug struct {
 /* callFrame {{{ */
 
 type callFrame struct {
-	Idx        int
 	Fn         *LFunction
 	Parent     *callFrame
+	Idx        int
 	Pc         int
 	Base       int
 	LocalBase  int
@@ -302,12 +303,14 @@ func (cs *autoGrowingCallFrameStack) FreeAll() {
 
 // Push pushes the passed callFrame onto the stack. it panics if the stack is full, caller should call IsFull() before
 // invoking this to avoid this.
-func (cs *autoGrowingCallFrameStack) Push(v callFrame) {
+func (cs *autoGrowingCallFrameStack) Push(v callFrame) *callFrame {
 	if !cs.autoGrow {
-		cs.array[cs.sp] = v
-		cs.array[cs.sp].Idx = cs.sp
+		sp := cs.sp
+		arr := cs.array
+		arr[sp] = v
+		arr[sp].Idx = sp
 		cs.sp++
-		return
+		return &arr[sp]
 	}
 	curSeg := cs.segments[cs.segIdx]
 	if cs.segSp >= FramesPerSegment {
@@ -321,9 +324,12 @@ func (cs *autoGrowingCallFrameStack) Push(v callFrame) {
 			panic("lua callstack overflow")
 		}
 	}
-	curSeg.array[cs.segSp] = v
-	curSeg.array[cs.segSp].Idx = int(cs.segSp) + FramesPerSegment*int(cs.segIdx)
+	arr := &curSeg.array
+	sp := cs.segSp
+	arr[sp] = v
+	arr[sp].Idx = int(sp) + FramesPerSegment*int(cs.segIdx)
 	cs.segSp++
+	return &arr[sp]
 }
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
@@ -506,13 +512,20 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	if limit == -1 || limit > rg.top {
 		limit = rg.top
 	}
+
+	arr := rg.array
+	basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+	dstPtr := unsafe.Add(basePtr, uintptr(regv) * unsafe.Sizeof(LValue{}))
+	srcPtr := unsafe.Add(basePtr, uintptr(start) * unsafe.Sizeof(LValue{}))
 	for i := 0; i < n; i++ {
 		srcIdx := start + i
 		if srcIdx >= limit || srcIdx < 0 {
-			rg.array[regv+i] = LValue{}
+			*(*LValue)(dstPtr) = LValue{}
 		} else {
-			rg.array[regv+i] = rg.array[srcIdx]
+			*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+			srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 		}
+		dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 	}
 
 	// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -520,7 +533,7 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	oldtop := rg.top
 	rg.top = regv + n
 	if rg.top < oldtop {
-		nilRange := rg.array[rg.top:oldtop]
+		nilRange := arr[rg.top:oldtop]
 		for i := range nilRange {
 			nilRange[i] = LValue{}
 		}
@@ -1078,8 +1091,7 @@ func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) { // +inline
 	if ls.stack.IsFull() {
 		ls.RaiseError("stack overflow")
 	}
-	ls.stack.Push(cf)
-	newcf := ls.stack.Last()
+	newcf := ls.stack.Push(cf)
 	// +inline-call ls.initCallFrame newcf
 	ls.currentFrame = newcf
 } // +inline-end

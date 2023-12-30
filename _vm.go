@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unsafe"
 )
+
+var _ = unsafe.Pointer(nil)
 
 func mainLoop(L *LState, baseframe *callFrame) {
 	var inst uint32

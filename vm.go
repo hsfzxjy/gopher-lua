@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unsafe"
 )
+
+var _ = unsafe.Pointer(nil)
 
 func mainLoop(L *LState, baseframe *callFrame) {
 	var inst uint32
@@ -121,13 +124,20 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			if limit == -1 || limit > rg.top {
 				limit = rg.top
 			}
+
+			arr := rg.array
+			basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+			dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+			srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 			for i := 0; i < n; i++ {
 				srcIdx := start + i
 				if srcIdx >= limit || srcIdx < 0 {
-					rg.array[regv+i] = LValue{}
+					*(*LValue)(dstPtr) = LValue{}
 				} else {
-					rg.array[regv+i] = rg.array[srcIdx]
+					*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+					srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 				}
+				dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 			}
 
 			// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -135,7 +145,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			oldtop := rg.top
 			rg.top = regv + n
 			if rg.top < oldtop {
-				nilRange := rg.array[rg.top:oldtop]
+				nilRange := arr[rg.top:oldtop]
 				for i := range nilRange {
 					nilRange[i] = LValue{}
 				}
@@ -241,13 +251,20 @@ func callGFunction(L *LState, tailcall bool) bool {
 		if limit == -1 || limit > rg.top {
 			limit = rg.top
 		}
+
+		arr := rg.array
+		basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+		dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+		srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 		for i := 0; i < n; i++ {
 			srcIdx := start + i
 			if srcIdx >= limit || srcIdx < 0 {
-				rg.array[regv+i] = LValue{}
+				*(*LValue)(dstPtr) = LValue{}
 			} else {
-				rg.array[regv+i] = rg.array[srcIdx]
+				*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+				srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 			}
+			dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 		}
 
 		// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -255,7 +272,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 		oldtop := rg.top
 		rg.top = regv + n
 		if rg.top < oldtop {
-			nilRange := rg.array[rg.top:oldtop]
+			nilRange := arr[rg.top:oldtop]
 			for i := range nilRange {
 				nilRange[i] = LValue{}
 			}
@@ -1217,8 +1234,7 @@ func init() {
 				if ls.stack.IsFull() {
 					ls.RaiseError("stack overflow")
 				}
-				ls.stack.Push(cf)
-				newcf := ls.stack.Last()
+				newcf := ls.stack.Push(cf)
 				// this section is inlined by go-inline
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 				{
@@ -1518,13 +1534,20 @@ func init() {
 					if limit == -1 || limit > rg.top {
 						limit = rg.top
 					}
+
+					arr := rg.array
+					basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+					dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+					srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 					for i := 0; i < n; i++ {
 						srcIdx := start + i
 						if srcIdx >= limit || srcIdx < 0 {
-							rg.array[regv+i] = LValue{}
+							*(*LValue)(dstPtr) = LValue{}
 						} else {
-							rg.array[regv+i] = rg.array[srcIdx]
+							*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+							srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 						}
+						dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 					}
 
 					// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -1532,7 +1555,7 @@ func init() {
 					oldtop := rg.top
 					rg.top = regv + n
 					if rg.top < oldtop {
-						nilRange := rg.array[rg.top:oldtop]
+						nilRange := arr[rg.top:oldtop]
 						for i := range nilRange {
 							nilRange[i] = LValue{}
 						}
@@ -1633,13 +1656,20 @@ func init() {
 							if limit == -1 || limit > rg.top {
 								limit = rg.top
 							}
+
+							arr := rg.array
+							basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+							dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+							srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 							for i := 0; i < n; i++ {
 								srcIdx := start + i
 								if srcIdx >= limit || srcIdx < 0 {
-									rg.array[regv+i] = LValue{}
+									*(*LValue)(dstPtr) = LValue{}
 								} else {
-									rg.array[regv+i] = rg.array[srcIdx]
+									*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+									srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 								}
+								dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 							}
 
 							// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -1647,7 +1677,7 @@ func init() {
 							oldtop := rg.top
 							rg.top = regv + n
 							if rg.top < oldtop {
-								nilRange := rg.array[rg.top:oldtop]
+								nilRange := arr[rg.top:oldtop]
 								for i := range nilRange {
 									nilRange[i] = LValue{}
 								}
@@ -1743,13 +1773,20 @@ func init() {
 						if limit == -1 || limit > rg.top {
 							limit = rg.top
 						}
+
+						arr := rg.array
+						basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+						dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+						srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 						for i := 0; i < n; i++ {
 							srcIdx := start + i
 							if srcIdx >= limit || srcIdx < 0 {
-								rg.array[regv+i] = LValue{}
+								*(*LValue)(dstPtr) = LValue{}
 							} else {
-								rg.array[regv+i] = rg.array[srcIdx]
+								*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+								srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 							}
+							dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 						}
 
 						// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -1757,7 +1794,7 @@ func init() {
 						oldtop := rg.top
 						rg.top = regv + n
 						if rg.top < oldtop {
-							nilRange := rg.array[rg.top:oldtop]
+							nilRange := arr[rg.top:oldtop]
 							for i := range nilRange {
 								nilRange[i] = LValue{}
 							}
@@ -2191,13 +2228,20 @@ func init() {
 				if limit == -1 || limit > rg.top {
 					limit = rg.top
 				}
+
+				arr := rg.array
+				basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+				dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+				srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 				for i := 0; i < n; i++ {
 					srcIdx := start + i
 					if srcIdx >= limit || srcIdx < 0 {
-						rg.array[regv+i] = LValue{}
+						*(*LValue)(dstPtr) = LValue{}
 					} else {
-						rg.array[regv+i] = rg.array[srcIdx]
+						*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+						srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
 					}
+					dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
 				}
 
 				// values beyond top don't need to be valid LValues, so setting them to nil is fine
@@ -2205,7 +2249,7 @@ func init() {
 				oldtop := rg.top
 				rg.top = regv + n
 				if rg.top < oldtop {
-					nilRange := rg.array[rg.top:oldtop]
+					nilRange := arr[rg.top:oldtop]
 					for i := range nilRange {
 						nilRange[i] = LValue{}
 					}
