@@ -19,4 +19,4 @@ pgo:
 	time ./build/glua -p build/nopgo.prof _glua-tests/count.lua
 	go build -o build/glua.pgo -pgo=build/nopgo.prof cmd/glua/glua.go
 	time ./build/glua.pgo -p build/pgo.prof _glua-tests/count.lua
-	go tool pprof -http :33801 build/pgo.prof
+	go tool pprof -no_browser -http :33801 build/pgo.prof
