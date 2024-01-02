@@ -144,76 +144,6 @@ type callFrame struct {
 	TailCall   int
 }
 
-type callFrameStack interface {
-	Push(v callFrame)
-	Pop() *callFrame
-	Last() *callFrame
-
-	SetSp(sp int)
-	Sp() int
-	At(sp int) *callFrame
-
-	IsFull() bool
-	IsEmpty() bool
-
-	FreeAll()
-}
-
-// Deprecated: merge into autoGrowingCallFrameStack
-type fixedCallFrameStack struct {
-	array []callFrame
-	sp    int
-}
-
-func newFixedCallFrameStack(size int) callFrameStack {
-	return &fixedCallFrameStack{
-		array: make([]callFrame, size),
-		sp:    0,
-	}
-}
-
-func (cs *fixedCallFrameStack) IsEmpty() bool { return cs.sp == 0 }
-
-func (cs *fixedCallFrameStack) IsFull() bool { return cs.sp == len(cs.array) }
-
-func (cs *fixedCallFrameStack) Clear() {
-	cs.sp = 0
-}
-
-func (cs *fixedCallFrameStack) Push(v callFrame) {
-	cs.array[cs.sp] = v
-	cs.array[cs.sp].Idx = cs.sp
-	cs.sp++
-}
-
-func (cs *fixedCallFrameStack) Sp() int {
-	return cs.sp
-}
-
-func (cs *fixedCallFrameStack) SetSp(sp int) {
-	cs.sp = sp
-}
-
-func (cs *fixedCallFrameStack) Last() *callFrame {
-	if cs.sp == 0 {
-		return nil
-	}
-	return &cs.array[cs.sp-1]
-}
-
-func (cs *fixedCallFrameStack) At(sp int) *callFrame {
-	return &cs.array[sp]
-}
-
-func (cs *fixedCallFrameStack) Pop() *callFrame {
-	cs.sp--
-	return &cs.array[cs.sp]
-}
-
-func (cs *fixedCallFrameStack) FreeAll() {
-	// nothing to do for fixed callframestack
-}
-
 // FramesPerSegment should be a power of 2 constant for performance reasons. It will allow the go compiler to change
 // the divs and mods into bitshifts. Max is 256 due to current use of uint8 to count how many frames in a segment are
 // used.
@@ -223,7 +153,7 @@ type callFrameStackSegment struct {
 	array [FramesPerSegment]callFrame
 }
 type segIdx uint16
-type autoGrowingCallFrameStack struct {
+type callFrameStack struct {
 	segments []*callFrameStackSegment
 	segIdx   segIdx
 	// segSp is the number of frames in the current segment which are used. Full 'sp' value is segIdx * FramesPerSegment + segSp.
@@ -253,8 +183,8 @@ func freeCallFrameStackSegment(seg *callFrameStackSegment) {
 // newCallFrameStack allocates a new stack for a lua state, which will auto grow up to a max size of at least maxSize.
 // it will actually grow up to the next segment size multiple after maxSize, where the segment size is dictated by
 // FramesPerSegment.
-func newAutoGrowingCallFrameStack(maxSize int, autoGrow bool) *autoGrowingCallFrameStack {
-	cs := &autoGrowingCallFrameStack{autoGrow: autoGrow}
+func newCallFrameStack(maxSize int, autoGrow bool) *callFrameStack {
+	cs := &callFrameStack{autoGrow: autoGrow}
 	if autoGrow {
 		cs.segments = make([]*callFrameStackSegment, (maxSize+(FramesPerSegment-1))/FramesPerSegment)
 		cs.segIdx = 0
@@ -266,7 +196,7 @@ func newAutoGrowingCallFrameStack(maxSize int, autoGrow bool) *autoGrowingCallFr
 	return cs
 }
 
-func (cs *autoGrowingCallFrameStack) IsEmpty() bool {
+func (cs *callFrameStack) IsEmpty() bool {
 	if !cs.autoGrow {
 		return cs.sp == 0
 	}
@@ -274,14 +204,14 @@ func (cs *autoGrowingCallFrameStack) IsEmpty() bool {
 }
 
 // IsFull returns true if the stack cannot receive any more stack pushes without overflowing
-func (cs *autoGrowingCallFrameStack) IsFull() bool {
+func (cs *callFrameStack) IsFull() bool {
 	if !cs.autoGrow {
 		return cs.sp == len(cs.array)
 	}
 	return int(cs.segIdx) == len(cs.segments) && cs.segSp >= FramesPerSegment
 }
 
-func (cs *autoGrowingCallFrameStack) Clear() {
+func (cs *callFrameStack) Clear() {
 	if !cs.autoGrow {
 		cs.sp = 0
 		return
@@ -294,7 +224,7 @@ func (cs *autoGrowingCallFrameStack) Clear() {
 	cs.segSp = 0
 }
 
-func (cs *autoGrowingCallFrameStack) FreeAll() {
+func (cs *callFrameStack) FreeAll() {
 	if !cs.autoGrow {
 		// noop
 		return
@@ -307,7 +237,7 @@ func (cs *autoGrowingCallFrameStack) FreeAll() {
 
 // Push pushes the passed callFrame onto the stack. it panics if the stack is full, caller should call IsFull() before
 // invoking this to avoid this.
-func (cs *autoGrowingCallFrameStack) Push(v callFrame) *callFrame {
+func (cs *callFrameStack) Push(v callFrame) *callFrame {
 	if !cs.autoGrow {
 		sp := cs.sp
 		arr := cs.array
@@ -337,7 +267,7 @@ func (cs *autoGrowingCallFrameStack) Push(v callFrame) *callFrame {
 }
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
-func (cs *autoGrowingCallFrameStack) Sp() int {
+func (cs *callFrameStack) Sp() int {
 	if !cs.autoGrow {
 		return cs.sp
 	}
@@ -346,7 +276,7 @@ func (cs *autoGrowingCallFrameStack) Sp() int {
 
 // SetSp can be used to rapidly unwind the stack, freeing all stack frames on the way. It should not be used to
 // allocate new stack space, use Push() for that.
-func (cs *autoGrowingCallFrameStack) SetSp(sp int) {
+func (cs *callFrameStack) SetSp(sp int) {
 	if !cs.autoGrow {
 		cs.sp = sp
 		return
@@ -364,7 +294,7 @@ func (cs *autoGrowingCallFrameStack) SetSp(sp int) {
 	cs.segSp = desiredFramesInLastSeg
 }
 
-func (cs *autoGrowingCallFrameStack) Last() *callFrame {
+func (cs *callFrameStack) Last() *callFrame {
 	if !cs.autoGrow {
 		if cs.sp == 0 {
 			return nil
@@ -383,7 +313,7 @@ func (cs *autoGrowingCallFrameStack) Last() *callFrame {
 	return &curSeg.array[segSp-1]
 }
 
-func (cs *autoGrowingCallFrameStack) At(sp int) *callFrame {
+func (cs *callFrameStack) At(sp int) *callFrame {
 	if !cs.autoGrow {
 		return &cs.array[sp]
 	}
@@ -393,7 +323,7 @@ func (cs *autoGrowingCallFrameStack) At(sp int) *callFrame {
 }
 
 // Pop pops off the most recent stack frame and returns it
-func (cs *autoGrowingCallFrameStack) Pop() *callFrame {
+func (cs *callFrameStack) Pop() *callFrame {
 	if !cs.autoGrow {
 		cs.sp--
 		return &cs.array[cs.sp]
@@ -743,9 +673,9 @@ func newLState(options Options) *LState {
 		ctx:          nil,
 	}
 	if options.MinimizeStackMemory {
-		ls.stack = newAutoGrowingCallFrameStack(options.CallStackSize, true)
+		ls.stack = newCallFrameStack(options.CallStackSize, true)
 	} else {
-		ls.stack = newAutoGrowingCallFrameStack(options.CallStackSize, false)
+		ls.stack = newCallFrameStack(options.CallStackSize, false)
 	}
 	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
 	ls.Env = ls.G.Global

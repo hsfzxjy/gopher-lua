@@ -581,7 +581,7 @@ func TestUninitializedVarAccess(t *testing.T) {
 }
 
 func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256, true)
+	stack := newCallFrameStack(256, true)
 
 	t.ResetTimer()
 
@@ -597,7 +597,7 @@ func BenchmarkCallFrameStackPushPopAutoGrow(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackPushPopFixed(t *testing.B) {
-	stack := newFixedCallFrameStack(256)
+	stack := newCallFrameStack(256, false)
 
 	t.ResetTimer()
 
@@ -614,7 +614,7 @@ func BenchmarkCallFrameStackPushPopFixed(t *testing.B) {
 
 // this test will intentionally not incur stack growth in order to bench the performance when no allocations happen
 func BenchmarkCallFrameStackPushPopShallowAutoGrow(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256, true)
+	stack := newCallFrameStack(256, true)
 
 	t.ResetTimer()
 
@@ -630,7 +630,7 @@ func BenchmarkCallFrameStackPushPopShallowAutoGrow(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackPushPopShallowFixed(t *testing.B) {
-	stack := newFixedCallFrameStack(256)
+	stack := newCallFrameStack(256, false)
 
 	t.ResetTimer()
 
@@ -646,7 +646,7 @@ func BenchmarkCallFrameStackPushPopShallowFixed(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackPushPopFixedNoInterface(t *testing.B) {
-	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
+	stack := newCallFrameStack(256, false)
 
 	t.ResetTimer()
 
@@ -662,7 +662,7 @@ func BenchmarkCallFrameStackPushPopFixedNoInterface(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackUnwindAutoGrow(t *testing.B) {
-	stack := newAutoGrowingCallFrameStack(256, true)
+	stack := newCallFrameStack(256, true)
 
 	t.ResetTimer()
 
@@ -676,7 +676,7 @@ func BenchmarkCallFrameStackUnwindAutoGrow(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackUnwindFixed(t *testing.B) {
-	stack := newFixedCallFrameStack(256)
+	stack := newCallFrameStack(256, false)
 
 	t.ResetTimer()
 
@@ -690,7 +690,7 @@ func BenchmarkCallFrameStackUnwindFixed(t *testing.B) {
 }
 
 func BenchmarkCallFrameStackUnwindFixedNoInterface(t *testing.B) {
-	stack := newFixedCallFrameStack(256).(*fixedCallFrameStack)
+	stack := newCallFrameStack(256, false)
 
 	t.ResetTimer()
 
