@@ -164,6 +164,7 @@ type callFrameStack struct {
 	autoGrow bool
 	array    []callFrame
 	sp       int
+	last     *callFrame
 }
 
 var segmentPool sync.Pool
@@ -222,6 +223,7 @@ func (cs *callFrameStack) Clear() {
 	}
 	cs.segIdx = 0
 	cs.segSp = 0
+	cs.last = nil
 }
 
 func (cs *callFrameStack) FreeAll() {
@@ -233,6 +235,7 @@ func (cs *callFrameStack) FreeAll() {
 		freeCallFrameStackSegment(cs.segments[i])
 		cs.segments[i] = nil
 	}
+	cs.last = nil
 }
 
 // Push pushes the passed callFrame onto the stack. it panics if the stack is full, caller should call IsFull() before
@@ -263,7 +266,8 @@ func (cs *callFrameStack) Push(v callFrame) *callFrame {
 	arr[sp] = v
 	arr[sp].Idx = int(sp) + FramesPerSegment*int(cs.segIdx)
 	cs.segSp++
-	return &arr[sp]
+	cs.last = &arr[sp]
+	return cs.last
 }
 
 func (cs *callFrameStack) PushEmpty() *callFrame {
@@ -290,7 +294,8 @@ func (cs *callFrameStack) PushEmpty() *callFrame {
 	sp := cs.segSp
 	arr[sp].Idx = int(sp) + FramesPerSegment*int(cs.segIdx)
 	cs.segSp++
-	return &arr[sp]
+	cs.last = &arr[sp]
+	return cs.last
 }
 
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
@@ -318,6 +323,7 @@ func (cs *callFrameStack) SetSp(sp int) {
 		cs.segments[cs.segIdx] = nil
 		cs.segIdx--
 	}
+	cs.last = &cs.segments[cs.segIdx].array[desiredFramesInLastSeg]
 	cs.segSp = desiredFramesInLastSeg
 }
 
@@ -328,16 +334,7 @@ func (cs *callFrameStack) Last() *callFrame {
 		}
 		return &cs.array[cs.sp-1]
 	}
-	curSeg := cs.segments[cs.segIdx]
-	segSp := cs.segSp
-	if segSp == 0 {
-		if cs.segIdx == 0 {
-			return nil
-		}
-		curSeg = cs.segments[cs.segIdx-1]
-		segSp = FramesPerSegment
-	}
-	return &curSeg.array[segSp-1]
+	return cs.last
 }
 
 func (cs *callFrameStack) At(sp int) *callFrame {
@@ -359,6 +356,7 @@ func (cs *callFrameStack) Pop() *callFrame {
 	if cs.segSp == 0 {
 		if cs.segIdx == 0 {
 			// stack empty
+			cs.last = nil
 			return nil
 		}
 		freeCallFrameStackSegment(curSeg)
@@ -368,7 +366,15 @@ func (cs *callFrameStack) Pop() *callFrame {
 		curSeg = cs.segments[cs.segIdx]
 	}
 	cs.segSp--
-	return &curSeg.array[cs.segSp]
+	ret := &curSeg.array[cs.segSp]
+	if cs.segSp > 0 {
+		cs.last = &curSeg.array[cs.segSp-1]
+	} else if cs.segIdx > 0 {
+		cs.last = &cs.segments[cs.segIdx-1].array[FramesPerSegment-1]
+	} else {
+		cs.last = nil
+	}
+	return ret
 }
 
 /* }}} */

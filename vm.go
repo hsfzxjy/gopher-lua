@@ -278,8 +278,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 			}
 		}
 	}
-	L.stack.Pop()
-	L.currentFrame = L.stack.Last()
+	L.currentFrame = L.stack.Pop().Parent //L.stack.Last()
 	return false
 }
 

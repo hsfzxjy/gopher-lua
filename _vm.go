@@ -130,8 +130,7 @@ func callGFunction(L *LState, tailcall bool) bool {
 	}
 
 	// +inline-call L.reg.CopyRange frame.ReturnBase L.reg.Top()-gfnret -1 wantret
-	L.stack.Pop()
-	L.currentFrame = L.stack.Last()
+	L.currentFrame = L.stack.Pop().Parent
 	return false
 }
 
