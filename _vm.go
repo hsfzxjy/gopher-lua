@@ -595,7 +595,32 @@ func init() {
 			} else {
 				callable, meta = L.metaCall(lv)
 			}
-			// +inline-call L.pushCallFrame callFrame{Fn:callable,Pc:0,Base:RA,LocalBase:RA+1,ReturnBase:RA,NArgs:nargs,NRet:nret,Parent:cf,TailCall:0} lv meta
+
+			// manually inline .pushCallFrame() to avoid duffcopy
+			{
+				if L.stack.IsFull() {
+					L.RaiseError("stack overflow")
+				}
+				if callable == nil {
+					L.RaiseError("attempt to call a non-function object")
+				}
+				newcf := L.stack.PushEmpty()
+				newcf.Fn = callable
+				newcf.Pc = 0
+				newcf.Base = RA
+				newcf.LocalBase = RA + 1
+				newcf.ReturnBase = RA
+				newcf.NArgs = nargs
+				newcf.NRet = nret
+				newcf.Parent = cf
+				newcf.TailCall = 0
+				if meta {
+					newcf.NArgs++
+					L.reg.Insert(lv, newcf.LocalBase)
+				}
+				// +inline-call L.initCallFrame newcf
+				L.currentFrame = newcf
+			}
 			if callable.IsG && callGFunction(L, false) {
 				return 1
 			}

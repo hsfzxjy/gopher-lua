@@ -262,6 +262,33 @@ func (cs *callFrameStack) Push(v callFrame) *callFrame {
 	return &arr[sp]
 }
 
+func (cs *callFrameStack) PushEmpty() *callFrame {
+	if !cs.autoGrow {
+		sp := cs.sp
+		arr := cs.array
+		arr[sp].Idx = sp
+		cs.sp++
+		return &arr[sp]
+	}
+	curSeg := cs.segments[cs.segIdx]
+	if cs.segSp >= FramesPerSegment {
+		// segment full, push new segment if allowed
+		if cs.segIdx < segIdx(len(cs.segments)-1) {
+			curSeg = newCallFrameStackSegment()
+			cs.segIdx++
+			cs.segments[cs.segIdx] = curSeg
+			cs.segSp = 0
+		} else {
+			panic("lua callstack overflow")
+		}
+	}
+	arr := &curSeg.array
+	sp := cs.segSp
+	arr[sp].Idx = int(sp) + FramesPerSegment*int(cs.segIdx)
+	cs.segSp++
+	return &arr[sp]
+}
+
 // Sp retrieves the current stack depth, which is the number of frames currently pushed on the stack.
 func (cs *callFrameStack) Sp() int {
 	if !cs.autoGrow {

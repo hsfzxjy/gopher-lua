@@ -1218,26 +1218,33 @@ func init() {
 			} else {
 				callable, meta = L.metaCall(lv)
 			}
-			// this section is inlined by go-inline
-			// source function is 'func (ls *LState) pushCallFrame(cf callFrame, fn LValue, meta bool) ' in '_state.go'
+
+			// manually inline .pushCallFrame() to avoid duffcopy
 			{
-				ls := L
-				cf := callFrame{Fn: callable, Pc: 0, Base: RA, LocalBase: RA + 1, ReturnBase: RA, NArgs: nargs, NRet: nret, Parent: cf, TailCall: 0}
-				fn := lv
+				if L.stack.IsFull() {
+					L.RaiseError("stack overflow")
+				}
+				if callable == nil {
+					L.RaiseError("attempt to call a non-function object")
+				}
+				newcf := L.stack.PushEmpty()
+				newcf.Fn = callable
+				newcf.Pc = 0
+				newcf.Base = RA
+				newcf.LocalBase = RA + 1
+				newcf.ReturnBase = RA
+				newcf.NArgs = nargs
+				newcf.NRet = nret
+				newcf.Parent = cf
+				newcf.TailCall = 0
 				if meta {
-					cf.NArgs++
-					ls.reg.Insert(fn, cf.LocalBase)
+					newcf.NArgs++
+					L.reg.Insert(lv, newcf.LocalBase)
 				}
-				if cf.Fn == nil {
-					ls.RaiseError("attempt to call a non-function object")
-				}
-				if ls.stack.IsFull() {
-					ls.RaiseError("stack overflow")
-				}
-				newcf := ls.stack.Push(cf)
 				// this section is inlined by go-inline
 				// source function is 'func (ls *LState) initCallFrame(cf *callFrame) ' in '_state.go'
 				{
+					ls := L
 					cf := newcf
 					if cf.Fn.IsG {
 						ls.reg.SetTop(cf.LocalBase + cf.NArgs)
@@ -1333,7 +1340,7 @@ func init() {
 						}
 					}
 				}
-				ls.currentFrame = newcf
+				L.currentFrame = newcf
 			}
 			if callable.IsG && callGFunction(L, false) {
 				return 1
