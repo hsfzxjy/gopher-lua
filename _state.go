@@ -482,7 +482,7 @@ func (rg *registry) Top() int {
 func (rg *registry) Push(v LValue) {
 	newSize := rg.top + 1
 	// +inline-call rg.checkSize newSize
-	rg.array[rg.top] = v
+	*(*LValue)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(rg.array)), uintptr(rg.top)*unsafe.Sizeof(LValue{}))) = v
 	rg.top++
 }
 
@@ -515,8 +515,8 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 
 	arr := rg.array
 	basePtr := unsafe.Pointer(unsafe.SliceData(arr))
-	dstPtr := unsafe.Add(basePtr, uintptr(regv) * unsafe.Sizeof(LValue{}))
-	srcPtr := unsafe.Add(basePtr, uintptr(start) * unsafe.Sizeof(LValue{}))
+	dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+	srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
 	for i := 0; i < n; i++ {
 		srcIdx := start + i
 		if srcIdx >= limit || srcIdx < 0 {
@@ -576,7 +576,7 @@ func (rg *registry) Insert(value LValue, reg int) {
 func (rg *registry) Set(regi int, vali LValue) { // +inline-start
 	newSize := regi + 1
 	// +inline-call rg.checkSize newSize
-	rg.array[regi] = vali.AsLValue()
+	*(*LValue)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(rg.array)), uintptr(regi)*unsafe.Sizeof(LValue{}))) = vali.AsLValue()
 	if regi >= rg.top {
 		rg.top = regi + 1
 	}
@@ -585,7 +585,7 @@ func (rg *registry) Set(regi int, vali LValue) { // +inline-start
 func (rg *registry) SetNumber(regi int, vali LNumber) { // +inline-start
 	newSize := regi + 1
 	// +inline-call rg.checkSize newSize
-	rg.array[regi] = vali.AsLValue()
+	*(*LValue)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(rg.array)), uintptr(regi)*unsafe.Sizeof(LValue{}))) = vali.AsLValue()
 	if regi >= rg.top {
 		rg.top = regi + 1
 	}
