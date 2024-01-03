@@ -420,14 +420,13 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			v := reg.Get(lbase + B)
 			// this section is inlined by go-inline
-			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			// source function is 'func (rg *registry) Move(from int, to int) ' in '_state.go'
 			{
 				rg := reg
-				regi := RA
-				vali := v
-				newSize := regi + 1
+				from := lbase + B
+				to := RA
+				newSize := to + 1
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
 				{
@@ -436,9 +435,10 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				*(*LValue)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(rg.array)), uintptr(regi)*unsafe.Sizeof(LValue{}))) = vali.AsLValue()
-				if regi >= rg.top {
-					rg.top = regi + 1
+				ptr := unsafe.Pointer(unsafe.SliceData(rg.array))
+				*(*LValue)(unsafe.Add(ptr, uintptr(to)*unsafe.Sizeof(LValue{}))) = *(*LValue)(unsafe.Add(ptr, uintptr(from)*unsafe.Sizeof(LValue{})))
+				if to >= rg.top {
+					rg.top = to + 1
 				}
 			}
 			return 0
@@ -450,14 +450,13 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			v := reg.Get(lbase + B)
 			// this section is inlined by go-inline
-			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+			// source function is 'func (rg *registry) Move(from int, to int) ' in '_state.go'
 			{
 				rg := reg
-				regi := lbase + A
-				vali := v
-				newSize := regi + 1
+				from := lbase + B
+				to := lbase + A
+				newSize := to + 1
 				// this section is inlined by go-inline
 				// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
 				{
@@ -466,9 +465,10 @@ func init() {
 						rg.resize(requiredSize)
 					}
 				}
-				*(*LValue)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(rg.array)), uintptr(regi)*unsafe.Sizeof(LValue{}))) = vali.AsLValue()
-				if regi >= rg.top {
-					rg.top = regi + 1
+				ptr := unsafe.Pointer(unsafe.SliceData(rg.array))
+				*(*LValue)(unsafe.Add(ptr, uintptr(to)*unsafe.Sizeof(LValue{}))) = *(*LValue)(unsafe.Add(ptr, uintptr(from)*unsafe.Sizeof(LValue{})))
+				if to >= rg.top {
+					rg.top = to + 1
 				}
 			}
 			code := cf.Fn.Proto.Code
@@ -478,14 +478,13 @@ func init() {
 				pc++
 				A = int(inst>>18) & 0xff //GETA
 				B = int(inst & 0x1ff)    //GETB
-				v := reg.Get(lbase + B)
 				// this section is inlined by go-inline
-				// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'
+				// source function is 'func (rg *registry) Move(from int, to int) ' in '_state.go'
 				{
 					rg := reg
-					regi := lbase + A
-					vali := v
-					newSize := regi + 1
+					from := lbase + B
+					to := lbase + A
+					newSize := to + 1
 					// this section is inlined by go-inline
 					// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
 					{
@@ -494,9 +493,10 @@ func init() {
 							rg.resize(requiredSize)
 						}
 					}
-					*(*LValue)(unsafe.Add(unsafe.Pointer(unsafe.SliceData(rg.array)), uintptr(regi)*unsafe.Sizeof(LValue{}))) = vali.AsLValue()
-					if regi >= rg.top {
-						rg.top = regi + 1
+					ptr := unsafe.Pointer(unsafe.SliceData(rg.array))
+					*(*LValue)(unsafe.Add(ptr, uintptr(to)*unsafe.Sizeof(LValue{}))) = *(*LValue)(unsafe.Add(ptr, uintptr(from)*unsafe.Sizeof(LValue{})))
+					if to >= rg.top {
+						rg.top = to + 1
 					}
 				}
 			}

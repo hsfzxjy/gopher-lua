@@ -630,6 +630,23 @@ func (rg *registry) Insert(value LValue, reg int) {
 	}
 }
 
+func (rg *registry) Move(from int, to int) { // +inline-start
+	newSize := to + 1
+	// this section is inlined by go-inline
+	// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+	{
+		requiredSize := newSize
+		if requiredSize > cap(rg.array) {
+			rg.resize(requiredSize)
+		}
+	}
+	ptr := unsafe.Pointer(unsafe.SliceData(rg.array))
+	*(*LValue)(unsafe.Add(ptr, uintptr(to)*unsafe.Sizeof(LValue{}))) = *(*LValue)(unsafe.Add(ptr, uintptr(from)*unsafe.Sizeof(LValue{})))
+	if to >= rg.top {
+		rg.top = to + 1
+	}
+} // +inline-end
+
 func (rg *registry) Set(regi int, vali LValue) { // +inline-start
 	newSize := regi + 1
 	// this section is inlined by go-inline

@@ -226,8 +226,7 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			RA := lbase + A
 			B := int(inst & 0x1ff) //GETB
-			v := reg.Get(lbase + B)
-			// +inline-call reg.Set RA v
+			// +inline-call reg.Move lbase+B RA
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_MOVEN
@@ -237,8 +236,7 @@ func init() {
 			A := int(inst>>18) & 0xff //GETA
 			B := int(inst & 0x1ff)    //GETB
 			C := int(inst>>9) & 0x1ff //GETC
-			v := reg.Get(lbase + B)
-			// +inline-call reg.Set lbase+A v
+			// +inline-call reg.Move lbase+B lbase+A
 			code := cf.Fn.Proto.Code
 			pc := cf.Pc
 			for i := 0; i < C; i++ {
@@ -246,8 +244,7 @@ func init() {
 				pc++
 				A = int(inst>>18) & 0xff //GETA
 				B = int(inst & 0x1ff)    //GETB
-				v := reg.Get(lbase + B)
-				// +inline-call reg.Set lbase+A v
+				// +inline-call reg.Move lbase+B lbase+A
 			}
 			cf.Pc = pc
 			return 0

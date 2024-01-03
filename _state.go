@@ -544,6 +544,16 @@ func (rg *registry) Insert(value LValue, reg int) {
 	// +inline-call rg.Set reg value
 }
 
+func (rg *registry) Move(from int, to int) { // +inline-start
+	newSize := to + 1
+	// +inline-call rg.checkSize newSize
+	ptr := unsafe.Pointer(unsafe.SliceData(rg.array))
+	*(*LValue)(unsafe.Add(ptr, uintptr(to)*unsafe.Sizeof(LValue{}))) = *(*LValue)(unsafe.Add(ptr, uintptr(from)*unsafe.Sizeof(LValue{})))
+	if to >= rg.top {
+		rg.top = to + 1
+	}
+} // +inline-end
+
 func (rg *registry) Set(regi int, vali LValue) { // +inline-start
 	newSize := regi + 1
 	// +inline-call rg.checkSize newSize
