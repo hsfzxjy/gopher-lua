@@ -305,6 +305,24 @@ func (ls *LState) RegisterModule(name string, funcs map[string]LGFunction) LValu
 	return mod
 }
 
+func (ls *LState) RegisterModuleWithSpecs(name string, specs map[string]LGFunctionSpec) LValue {
+	tb := ls.FindTable(ls.Get(RegistryIndex).MustLTable(), "_LOADED", 1)
+	mod := ls.GetField(tb, name)
+	if mod.Type() != LTTable {
+		newmod := ls.FindTable(ls.Get(GlobalsIndex).MustLTable(), name, len(specs))
+		if newmodtb, ok := newmod.AsLTable(); !ok {
+			ls.RaiseError("name conflict for module(%v)", name)
+		} else {
+			for fname, spec := range specs {
+				newmodtb.RawSetString(fname, ls.NewFunctionSpec(spec).AsLValue())
+			}
+			ls.SetField(tb, name, newmodtb.AsLValue())
+			return newmodtb.AsLValue()
+		}
+	}
+	return mod
+}
+
 func (ls *LState) SetFuncs(tb *LTable, funcs map[string]LGFunction, upvalues ...LValue) *LTable {
 	for fname, fn := range funcs {
 		tb.RawSetString(fname, ls.NewClosure(fn, upvalues...).AsLValue())

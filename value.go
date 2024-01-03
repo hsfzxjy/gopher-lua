@@ -604,12 +604,17 @@ func (tb *LTable) AsLValue() LValue {
 
 type LFunction struct {
 	IsG       bool
+	IsFast    bool
 	Env       *LTable
 	Proto     *FunctionProto
 	GFunction LGFunction
 	Upvalues  []*Upvalue
 }
 type LGFunction func(*LState) int
+type LGFunctionSpec struct {
+	Fn     LGFunction
+	IsFast bool
+}
 
 func (fn *LFunction) String() string   { return fmt.Sprintf("function: %p", fn) }
 func (fn *LFunction) Type() LValueType { return LTFunction }

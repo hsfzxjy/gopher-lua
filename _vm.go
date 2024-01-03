@@ -134,6 +134,21 @@ func callGFunction(L *LState, tailcall bool) bool {
 	return false
 }
 
+func callFastGFunction(L *LState, fn *LFunction, RA, nret int, tailcall bool) bool {
+	ff := &L.stack.fastFrame
+	oldF := L.currentFrame
+	L.currentFrame = ff
+	ff.LocalBase = RA + 1
+	gfnret := fn.GFunction(L)
+
+	if nret == MultRet {
+		nret = gfnret
+	}
+	// +inline-call L.reg.CopyRange RA L.reg.Top()-gfnret -1 nret
+	L.currentFrame = oldF
+	return false
+}
+
 func threadRun(L *LState) {
 	if L.stack.IsEmpty() {
 		return
@@ -593,6 +608,14 @@ func init() {
 				meta = false
 			} else {
 				callable, meta = L.metaCall(lv)
+			}
+
+			if callable != nil && callable.IsFast {
+				if callFastGFunction(L, callable, RA, nret, false) {
+					return 1
+				} else {
+					return 0
+				}
 			}
 
 			// manually inline .pushCallFrame() to avoid duffcopy

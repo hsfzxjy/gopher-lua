@@ -271,14 +271,75 @@ func callGFunction(L *LState, tailcall bool) bool {
 		// setting them to nil rather than LNil lets us invoke the golang memclr opto
 		oldtop := rg.top
 		rg.top = regv + n
-		if rg.top < oldtop {
+		if !rg.laxGC && rg.top < oldtop {
 			nilRange := arr[rg.top:oldtop]
 			for i := range nilRange {
 				nilRange[i] = LValue{}
 			}
 		}
 	}
-	L.currentFrame = L.stack.Pop().Parent //L.stack.Last()
+	L.currentFrame = L.stack.Pop().Parent
+	return false
+}
+
+func callFastGFunction(L *LState, fn *LFunction, RA, nret int, tailcall bool) bool {
+	ff := &L.stack.fastFrame
+	oldF := L.currentFrame
+	L.currentFrame = ff
+	ff.LocalBase = RA + 1
+	gfnret := fn.GFunction(L)
+
+	if nret == MultRet {
+		nret = gfnret
+	}
+	// this section is inlined by go-inline
+	// source function is 'func (rg *registry) CopyRange(regv, start, limit, n int) ' in '_state.go'
+	{
+		rg := L.reg
+		regv := RA
+		start := L.reg.Top() - gfnret
+		limit := -1
+		n := nret
+		newSize := regv + n
+		// this section is inlined by go-inline
+		// source function is 'func (rg *registry) checkSize(requiredSize int) ' in '_state.go'
+		{
+			requiredSize := newSize
+			if requiredSize > cap(rg.array) {
+				rg.resize(requiredSize)
+			}
+		}
+		if limit == -1 || limit > rg.top {
+			limit = rg.top
+		}
+
+		arr := rg.array
+		basePtr := unsafe.Pointer(unsafe.SliceData(arr))
+		dstPtr := unsafe.Add(basePtr, uintptr(regv)*unsafe.Sizeof(LValue{}))
+		srcPtr := unsafe.Add(basePtr, uintptr(start)*unsafe.Sizeof(LValue{}))
+		for i := 0; i < n; i++ {
+			srcIdx := start + i
+			if srcIdx >= limit || srcIdx < 0 {
+				*(*LValue)(dstPtr) = LValue{}
+			} else {
+				*(*LValue)(dstPtr) = *(*LValue)(srcPtr)
+				srcPtr = unsafe.Add(srcPtr, unsafe.Sizeof(LValue{}))
+			}
+			dstPtr = unsafe.Add(dstPtr, unsafe.Sizeof(LValue{}))
+		}
+
+		// values beyond top don't need to be valid LValues, so setting them to nil is fine
+		// setting them to nil rather than LNil lets us invoke the golang memclr opto
+		oldtop := rg.top
+		rg.top = regv + n
+		if !rg.laxGC && rg.top < oldtop {
+			nilRange := arr[rg.top:oldtop]
+			for i := range nilRange {
+				nilRange[i] = LValue{}
+			}
+		}
+	}
+	L.currentFrame = oldF
 	return false
 }
 
@@ -1216,6 +1277,14 @@ func init() {
 				meta = false
 			} else {
 				callable, meta = L.metaCall(lv)
+			}
+
+			if callable != nil && callable.IsFast {
+				if callFastGFunction(L, callable, RA, nret, false) {
+					return 1
+				} else {
+					return 0
+				}
 			}
 
 			// manually inline .pushCallFrame() to avoid duffcopy

@@ -168,6 +168,8 @@ type callFrameStack struct {
 	array    []callFrame
 	sp       int
 	last     *callFrame
+
+	fastFrame callFrame
 }
 
 var segmentPool sync.Pool
@@ -1760,6 +1762,12 @@ func (ls *LState) NewUserData() *LUserData {
 
 func (ls *LState) NewFunction(fn LGFunction) *LFunction {
 	return newLFunctionG(fn, ls.currentEnv(), 0)
+}
+
+func (ls *LState) NewFunctionSpec(spec LGFunctionSpec) *LFunction {
+	fn := newLFunctionG(spec.Fn, ls.currentEnv(), 0)
+	fn.IsFast = spec.IsFast
+	return fn
 }
 
 func (ls *LState) NewClosure(fn LGFunction, upvalues ...LValue) *LFunction {

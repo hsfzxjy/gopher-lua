@@ -13,7 +13,7 @@ func OpenString(L *LState) int {
 	var mod *LTable //lint:ignore S1021 Align with upstream
 	//_, ok := L.G.builtinMts[int(LTString)]
 	//if !ok {
-	mod = L.RegisterModule(StringLibName, strFuncs).MustLTable()
+	mod = L.RegisterModuleWithSpecs(StringLibName, strFuncs).MustLTable()
 	gmatch := L.NewClosure(strGmatch, L.NewFunction(strGmatchIter).AsLValue())
 	mod.RawSetString("gmatch", gmatch.AsLValue())
 	mod.RawSetString("gfind", gmatch.AsLValue())
@@ -24,20 +24,20 @@ func OpenString(L *LState) int {
 	return 1
 }
 
-var strFuncs = map[string]LGFunction{
-	"byte":    strByte,
-	"char":    strChar,
-	"dump":    strDump,
-	"find":    strFind,
-	"format":  strFormat,
-	"gsub":    strGsub,
-	"len":     strLen,
-	"lower":   strLower,
-	"match":   strMatch,
-	"rep":     strRep,
-	"reverse": strReverse,
-	"sub":     strSub,
-	"upper":   strUpper,
+var strFuncs = map[string]LGFunctionSpec{
+	"byte":    {Fn: strByte},
+	"char":    {Fn: strChar},
+	"dump":    {Fn: strDump},
+	"find":    {Fn: strFind},
+	"format":  {Fn: strFormat},
+	"gsub":    {Fn: strGsub},
+	"len":     {Fn: strLen},
+	"lower":   {Fn: strLower},
+	"match":   {Fn: strMatch},
+	"rep":     {Fn: strRep},
+	"reverse": {Fn: strReverse},
+	"sub":     {Fn: strSub, IsFast: true},
+	"upper":   {Fn: strUpper},
 }
 
 func strByte(L *LState) int {
