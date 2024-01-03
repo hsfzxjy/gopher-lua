@@ -168,8 +168,6 @@ type callFrameStack struct {
 	array    []callFrame
 	sp       int
 	last     *callFrame
-
-	fastFrame callFrame
 }
 
 var segmentPool sync.Pool
@@ -929,6 +927,9 @@ func (ls *LState) indexToReg(idx int) int {
 }
 
 func (ls *LState) currentLocalBase() int {
+	if ls.fastCallLBase > 0 {
+		return ls.fastCallLBase
+	}
 	base := 0
 	if ls.currentFrame != nil {
 		base = ls.currentFrame.LocalBase

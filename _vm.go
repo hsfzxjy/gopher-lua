@@ -135,17 +135,14 @@ func callGFunction(L *LState, tailcall bool) bool {
 }
 
 func callFastGFunction(L *LState, fn *LFunction, RA, nret int, tailcall bool) bool {
-	ff := &L.stack.fastFrame
-	oldF := L.currentFrame
-	L.currentFrame = ff
-	ff.LocalBase = RA + 1
+	L.fastCallLBase = RA + 1
 	gfnret := fn.GFunction(L)
 
 	if nret == MultRet {
 		nret = gfnret
 	}
 	// +inline-call L.reg.CopyRange RA L.reg.Top()-gfnret -1 nret
-	L.currentFrame = oldF
+	L.fastCallLBase = 0
 	return false
 }
 
