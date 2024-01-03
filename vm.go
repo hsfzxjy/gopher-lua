@@ -13,9 +13,15 @@ import (
 
 var _ = unsafe.Pointer(nil)
 
+const (
+	retOK = iota
+	retFail
+	retFnChanged
+	retCFChanged
+)
+
 func mainLoop(L *LState, baseframe *callFrame) {
 	var inst uint32
-	var cf *callFrame
 
 	if L.stack.IsEmpty() {
 		return
@@ -27,19 +33,34 @@ func mainLoop(L *LState, baseframe *callFrame) {
 		return
 	}
 
+	var (
+		cf   = L.currentFrame
+		code = cf.Fn.Proto.Code
+		ret  int
+		jt   = &jumpTable
+	)
+
 	for {
-		cf = L.currentFrame
-		inst = cf.Fn.Proto.Code[cf.Pc]
+		inst = code[cf.Pc]
 		cf.Pc++
-		if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
+		ret = jt[int(inst>>26)](L, inst, baseframe)
+		if ret == retOK {
+			continue
+		}
+		switch ret {
+		case retFail:
 			return
+		case retFnChanged:
+			code = cf.Fn.Proto.Code
+		case retCFChanged:
+			cf = L.currentFrame
+			code = cf.Fn.Proto.Code
 		}
 	}
 }
 
 func mainLoopWithContext(L *LState, baseframe *callFrame) {
 	var inst uint32
-	var cf *callFrame
 
 	if L.stack.IsEmpty() {
 		return
@@ -51,17 +72,33 @@ func mainLoopWithContext(L *LState, baseframe *callFrame) {
 		return
 	}
 
+	var (
+		cf   = L.currentFrame
+		code = cf.Fn.Proto.Code
+		ret  int
+		jt   = &jumpTable
+	)
+
 	for {
-		cf = L.currentFrame
-		inst = cf.Fn.Proto.Code[cf.Pc]
+		inst = code[cf.Pc]
 		cf.Pc++
 		select {
 		case <-L.ctx.Done():
 			L.RaiseError(L.ctx.Err().Error())
 			return
 		default:
-			if jumpTable[int(inst>>26)](L, inst, baseframe) == 1 {
+			ret = jt[int(inst>>26)](L, inst, baseframe)
+			if ret == retOK {
+				continue
+			}
+			switch ret {
+			case retFail:
 				return
+			case retFnChanged:
+				code = cf.Fn.Proto.Code
+			case retCFChanged:
+				cf = L.currentFrame
+				code = cf.Fn.Proto.Code
 			}
 		}
 	}
@@ -1278,7 +1315,7 @@ func init() {
 
 			if callable != nil && callable.IsFast {
 				if callFastGFunction(L, callable, RA, nret, false) {
-					return 1
+					return retFail
 				} else {
 					return 0
 				}
@@ -1407,10 +1444,14 @@ func init() {
 				}
 				L.currentFrame = newcf
 			}
-			if callable.IsG && callGFunction(L, false) {
-				return 1
+			if callable.IsG {
+				if callGFunction(L, false) {
+					return retFail
+				} else {
+					return 0
+				}
 			}
-			return 0
+			return retCFChanged
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_TAILCALL
 			reg := L.reg
@@ -1470,11 +1511,12 @@ func init() {
 					TailCall:   0,
 				}, lv, meta)
 				if callGFunction(L, true) {
-					return 1
+					return retFail
 				}
 				if L.currentFrame == nil || L.currentFrame.Fn.IsG || luaframe == baseframe {
-					return 1
+					return retFail
 				}
+				return retCFChanged
 			} else {
 				base := cf.Base
 				cf.Fn = callable
@@ -1635,6 +1677,7 @@ func init() {
 				}
 				cf.Base = base
 				cf.LocalBase = base + (cf.LocalBase - lbase + 1)
+				return retFnChanged
 			}
 			return 0
 		},
@@ -1789,7 +1832,7 @@ func init() {
 					}
 				}
 				switchToParentThread(L, n, false, true)
-				return 1
+				return retFail
 			}
 			islast := baseframe == L.stack.Pop() || L.stack.IsEmpty()
 			// this section is inlined by go-inline
@@ -1907,9 +1950,9 @@ func init() {
 			}
 			L.currentFrame = L.stack.Last()
 			if islast || L.currentFrame == nil || L.currentFrame.Fn.IsG {
-				return 1
+				return retFail
 			}
-			return 0
+			return retCFChanged
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_FORLOOP
 			reg := L.reg
