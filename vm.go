@@ -1984,6 +1984,9 @@ func init() {
 								}
 								oldtopi := rg.top
 								rg.top = topi
+								if rg.laxGC {
+									goto END
+								}
 								for i := oldtopi; i < rg.top; i++ {
 									rg.array[i] = LValue{}
 								}
@@ -1998,6 +2001,7 @@ func init() {
 								//for i := rg.top; i < oldtop; i++ {
 								//	rg.array[i] = LValue{}
 								//}
+							END:
 							}
 						}
 					} else {
@@ -2072,6 +2076,9 @@ func init() {
 				}
 				oldtopi := rg.top
 				rg.top = topi
+				if rg.laxGC {
+					goto END
+				}
 				for i := oldtopi; i < rg.top; i++ {
 					rg.array[i] = LValue{}
 				}
@@ -2086,6 +2093,7 @@ func init() {
 				//for i := rg.top; i < oldtop; i++ {
 				//	rg.array[i] = LValue{}
 				//}
+			END:
 			}
 			// this section is inlined by go-inline
 			// source function is 'func (rg *registry) Set(regi int, vali LValue) ' in '_state.go'

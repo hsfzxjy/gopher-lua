@@ -439,6 +439,9 @@ func (rg *registry) SetTop(topi int) { // +inline-start
 	}
 	oldtopi := rg.top
 	rg.top = topi
+	if rg.laxGC {
+		goto END
+	}
 	for i := oldtopi; i < rg.top; i++ {
 		rg.array[i] = LValue{}
 	}
@@ -453,6 +456,7 @@ func (rg *registry) SetTop(topi int) { // +inline-start
 	//for i := rg.top; i < oldtop; i++ {
 	//	rg.array[i] = LValue{}
 	//}
+END:
 } // +inline-end
 
 func (rg *registry) Top() int {
