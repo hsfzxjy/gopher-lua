@@ -55,7 +55,7 @@ Available options are:
 
 	status := 0
 
-	L := lua.NewState()
+	L := lua.NewState(lua.Options{LaxGC: true})
 	defer L.Close()
 	if opt_m > 0 {
 		L.SetMx(opt_m)

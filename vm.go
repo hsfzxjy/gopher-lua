@@ -144,7 +144,7 @@ func copyReturnValues(L *LState, regv, start, n, b int) { // +inline-start
 			// setting them to nil rather than LNil lets us invoke the golang memclr opto
 			oldtop := rg.top
 			rg.top = regv + n
-			if rg.top < oldtop {
+			if !rg.laxGC && rg.top < oldtop {
 				nilRange := arr[rg.top:oldtop]
 				for i := range nilRange {
 					nilRange[i] = LValue{}
@@ -1560,7 +1560,7 @@ func init() {
 					// setting them to nil rather than LNil lets us invoke the golang memclr opto
 					oldtop := rg.top
 					rg.top = regv + n
-					if rg.top < oldtop {
+					if !rg.laxGC && rg.top < oldtop {
 						nilRange := arr[rg.top:oldtop]
 						for i := range nilRange {
 							nilRange[i] = LValue{}
@@ -1682,7 +1682,7 @@ func init() {
 							// setting them to nil rather than LNil lets us invoke the golang memclr opto
 							oldtop := rg.top
 							rg.top = regv + n
-							if rg.top < oldtop {
+							if !rg.laxGC && rg.top < oldtop {
 								nilRange := arr[rg.top:oldtop]
 								for i := range nilRange {
 									nilRange[i] = LValue{}
@@ -1799,7 +1799,7 @@ func init() {
 						// setting them to nil rather than LNil lets us invoke the golang memclr opto
 						oldtop := rg.top
 						rg.top = regv + n
-						if rg.top < oldtop {
+						if !rg.laxGC && rg.top < oldtop {
 							nilRange := arr[rg.top:oldtop]
 							for i := range nilRange {
 								nilRange[i] = LValue{}
@@ -2254,7 +2254,7 @@ func init() {
 				// setting them to nil rather than LNil lets us invoke the golang memclr opto
 				oldtop := rg.top
 				rg.top = regv + n
-				if rg.top < oldtop {
+				if !rg.laxGC && rg.top < oldtop {
 					nilRange := arr[rg.top:oldtop]
 					for i := range nilRange {
 						nilRange[i] = LValue{}

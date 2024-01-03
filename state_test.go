@@ -713,7 +713,7 @@ func (registryTestHandler) registryOverflow() {
 func BenchmarkRegistryPushPopAutoGrow(t *testing.B) {
 	al := newAllocator(32)
 	sz := 256 * 20
-	reg := newRegistry(registryTestHandler(0), sz/2, 64, sz, al)
+	reg := newRegistry(registryTestHandler(0), sz/2, 64, sz, false, al)
 	value := LString("test")
 
 	t.ResetTimer()
@@ -731,7 +731,7 @@ func BenchmarkRegistryPushPopAutoGrow(t *testing.B) {
 func BenchmarkRegistryPushPopFixed(t *testing.B) {
 	al := newAllocator(32)
 	sz := 256 * 20
-	reg := newRegistry(registryTestHandler(0), sz, 0, sz, al)
+	reg := newRegistry(registryTestHandler(0), sz, 0, sz, false, al)
 	value := LString("test")
 
 	t.ResetTimer()
@@ -749,7 +749,7 @@ func BenchmarkRegistryPushPopFixed(t *testing.B) {
 func BenchmarkRegistrySetTop(t *testing.B) {
 	al := newAllocator(32)
 	sz := 256 * 20
-	reg := newRegistry(registryTestHandler(0), sz, 32, sz*2, al)
+	reg := newRegistry(registryTestHandler(0), sz, 32, sz*2, false, al)
 
 	t.ResetTimer()
 

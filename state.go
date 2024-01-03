@@ -110,6 +110,9 @@ type Options struct {
 	// If `MinimizeStackMemory` is set, the call stack will be automatically grown or shrank up to a limit of
 	// `CallStackSize` in order to minimize memory usage. This does incur a slight performance penalty.
 	MinimizeStackMemory bool
+
+	// If `LaxGC` is set, objects are not guaranteed to be finalized for better performance.
+	LaxGC bool
 }
 
 /* }}} */
@@ -391,10 +394,11 @@ type registry struct {
 	maxSize int
 	alloc   *allocator
 	handler registryHandler
+	laxGC   bool
 }
 
-func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize int, alloc *allocator) *registry {
-	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, alloc, handler}
+func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize int, laxGC bool, alloc *allocator) *registry {
+	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, alloc, handler, laxGC}
 }
 
 //lint:ignore U1000 For inlining
@@ -520,7 +524,7 @@ func (rg *registry) CopyRange(regv, start, limit, n int) { // +inline-start
 	// setting them to nil rather than LNil lets us invoke the golang memclr opto
 	oldtop := rg.top
 	rg.top = regv + n
-	if rg.top < oldtop {
+	if !rg.laxGC && rg.top < oldtop {
 		nilRange := arr[rg.top:oldtop]
 		for i := range nilRange {
 			nilRange[i] = LValue{}
@@ -710,7 +714,7 @@ func newLState(options Options) *LState {
 	} else {
 		ls.stack = newCallFrameStack(options.CallStackSize, false)
 	}
-	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, al)
+	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, options.LaxGC, al)
 	ls.Env = ls.G.Global
 	return ls
 }
