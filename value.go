@@ -643,7 +643,6 @@ type LState struct {
 	stop         int32
 	reg          *registry
 	stack        *callFrameStack
-	alloc        *allocator
 	currentFrame *callFrame
 	wrapped      bool
 	uvcache      *Upvalue

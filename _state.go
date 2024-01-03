@@ -388,13 +388,12 @@ type registry struct {
 	top     int
 	growBy  int
 	maxSize int
-	alloc   *allocator
 	handler registryHandler
 	laxGC   bool
 }
 
-func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize int, laxGC bool, alloc *allocator) *registry {
-	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, alloc, handler, laxGC}
+func newRegistry(handler registryHandler, initialSize int, growBy int, maxSize int, laxGC bool) *registry {
+	return &registry{make([]LValue, initialSize), 0, growBy, maxSize, handler, laxGC}
 }
 
 //lint:ignore U1000 For inlining
@@ -606,7 +605,6 @@ func panicWithoutTraceback(L *LState) {
 }
 
 func newLState(options Options) *LState {
-	al := newAllocator(32)
 	ls := &LState{
 		G:       newGlobal(),
 		Parent:  nil,
@@ -615,7 +613,6 @@ func newLState(options Options) *LState {
 		Options: options,
 
 		stop:         0,
-		alloc:        al,
 		currentFrame: nil,
 		wrapped:      false,
 		uvcache:      nil,
@@ -628,7 +625,7 @@ func newLState(options Options) *LState {
 	} else {
 		ls.stack = newCallFrameStack(options.CallStackSize, false)
 	}
-	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, options.LaxGC, al)
+	ls.reg = newRegistry(ls, options.RegistrySize, options.RegistryGrowStep, options.RegistryMaxSize, options.LaxGC)
 	ls.Env = ls.G.Global
 	return ls
 }
