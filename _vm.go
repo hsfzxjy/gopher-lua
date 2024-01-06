@@ -309,7 +309,7 @@ func init() {
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
 			//reg.Set(RA, L.getField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx]))
-			v := L.getFieldString(cf.Fn.Env.AsLValue(), cf.Fn.Proto.stringConstants[Bx])
+			v := L.getFieldString(cf.Fn.Env.AsLValue(), cf.Fn.Proto.stringConstant(Bx))
 			// +inline-call reg.Set RA v
 			return 0
 		},
@@ -345,7 +345,7 @@ func init() {
 			RA := lbase + A
 			Bx := int(inst & 0x3ffff) //GETBX
 			//L.setField(cf.Fn.Env, cf.Fn.Proto.Constants[Bx], reg.Get(RA))
-			L.setFieldString(cf.Fn.Env.AsLValue(), cf.Fn.Proto.stringConstants[Bx], reg.Get(RA))
+			L.setFieldString(cf.Fn.Env.AsLValue(), cf.Fn.Proto.stringConstant(Bx), reg.Get(RA))
 			return 0
 		},
 		func(L *LState, inst uint32, baseframe *callFrame) int { //OP_SETUPVAL

@@ -1337,13 +1337,6 @@ func compileFunctionExpr(context *funcContext, funcexpr *ast.FunctionExpr, ec *e
 	context.Proto.DbgSourcePositions = context.Code.PosList()
 	context.Proto.DbgUpvalues = context.Upvalues.Names()
 	context.Proto.NumUpvalues = uint8(len(context.Proto.DbgUpvalues))
-	for _, clv := range context.Proto.Constants {
-		sv := ""
-		if slv, ok := clv.AsLString(); ok {
-			sv = string(slv)
-		}
-		context.Proto.stringConstants = append(context.Proto.stringConstants, sv)
-	}
 	patchCode(context)
 } // }}}
 

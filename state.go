@@ -976,7 +976,7 @@ func (ls *LState) rkValue(idx int) LValue {
 
 func (ls *LState) rkString(idx int) string {
 	if (idx & opBitRk) != 0 {
-		return ls.currentFrame.Fn.Proto.stringConstants[idx & ^opBitRk]
+		return ls.currentFrame.Fn.Proto.stringConstant(idx &^ opBitRk)
 	}
 	return string(ls.reg.array[ls.currentFrame.LocalBase+idx].mustLStringUnchecked())
 }
